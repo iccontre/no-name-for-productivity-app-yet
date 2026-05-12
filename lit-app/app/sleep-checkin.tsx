@@ -1,6 +1,18 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+
+type CheckIn = {
+  hours: string;
+  mood: string;
+  stress: string;
+  energy: number;
+  mode: "Recovery" | "Progress";
+  createdAt: string;
+};
+
+const CHECKIN_KEY = "lit_latest_checkin";
 
 function calculateEnergy(hours: number, mood: number, stress: number) {
   let score = 50;
@@ -16,7 +28,7 @@ function calculateEnergy(hours: number, mood: number, stress: number) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function getMode(score: number) {
+function getMode(score: number): "Recovery" | "Progress" {
   return score >= 60 ? "Progress" : "Recovery";
 }
 
@@ -30,7 +42,18 @@ export default function SleepCheckInScreen() {
   const energy = calculateEnergy(Number(hours), Number(mood), Number(stress));
   const mode = getMode(energy);
 
-  function saveCheckIn() {
+  async function saveCheckIn() {
+    const checkIn: CheckIn = {
+      hours,
+      mood,
+      stress,
+      energy,
+      mode,
+      createdAt: new Date().toISOString(),
+    };
+
+    await AsyncStorage.setItem(CHECKIN_KEY, JSON.stringify(checkIn));
+
     router.push({
       pathname: "/",
       params: {
@@ -73,7 +96,7 @@ export default function SleepCheckInScreen() {
         />
       </View>
 
-      <View style={[styles.resultCard, mode === "Recovery" ? styles.recovery : styles.progress]}>
+      <View style={mode === "Recovery" ? styles.recoveryResultCard : styles.progressResultCard}>
         <Text style={styles.resultLabel}>Energy Yield</Text>
         <Text style={styles.energy}>🔥 {energy}/100</Text>
         <Text style={styles.mode}>{mode}</Text>
@@ -134,15 +157,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  resultCard: {
+  progressResultCard: {
     borderRadius: 24,
     padding: 22,
     marginBottom: 20,
-  },
-  progress: {
     backgroundColor: "#1F2937",
   },
-  recovery: {
+  recoveryResultCard: {
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 20,
     backgroundColor: "#312E81",
   },
   resultLabel: {

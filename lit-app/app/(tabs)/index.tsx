@@ -25,6 +25,7 @@ type UserProfile = {
 
 const COMPLETED_QUESTS_KEY = "lit_completed_quests";
 const PROFILE_KEY = "lit_user_profile";
+const CHECKIN_KEY = "lit_latest_checkin";
 
 export default function HomeScreen() {
   const params = useLocalSearchParams();
@@ -32,16 +33,19 @@ export default function HomeScreen() {
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const rawEnergy = Array.isArray(params.energy) ? params.energy[0] : params.energy;
 
-  const mode = rawMode === "Recovery" ? "Recovery" : "Progress";
-  const energyYield = rawEnergy ? Number(rawEnergy) : 78;
+  const [savedMode, setSavedMode] = useState<"Recovery" | "Progress">("Progress");
+  const [savedEnergy, setSavedEnergy] = useState(78);
+
+  const mode = rawMode === "Recovery" || rawMode === "Progress" ? rawMode : savedMode;
+  const energyYield = rawEnergy ? Number(rawEnergy) : savedEnergy;
   const isRecovery = mode === "Recovery";
 
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-
   useEffect(() => {
-    loadCompletedQuests();
-    loadProfile();
+  loadCompletedQuests();
+  loadProfile();
+  loadLatestCheckIn();
   }, []);
 
   async function loadProfile() {
@@ -52,6 +56,21 @@ export default function HomeScreen() {
   async function loadCompletedQuests() {
     const saved = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
     if (saved) setCompletedQuests(JSON.parse(saved));
+  }
+  async function loadLatestCheckIn() {
+  const saved = await AsyncStorage.getItem(CHECKIN_KEY);
+
+    if (saved) {
+      const checkIn = JSON.parse(saved);
+
+      if (checkIn.mode === "Recovery" || checkIn.mode === "Progress") {
+        setSavedMode(checkIn.mode);
+      }
+
+      if (typeof checkIn.energy === "number") {
+        setSavedEnergy(checkIn.energy);
+      }
+    }
   }
 
   async function saveCompletedQuests(nextCompleted: string[]) {
