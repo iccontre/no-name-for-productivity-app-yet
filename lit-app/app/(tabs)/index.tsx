@@ -29,8 +29,11 @@ const PROFILE_KEY = "lit_user_profile";
 export default function HomeScreen() {
   const params = useLocalSearchParams();
 
-  const mode = params.mode === "Recovery" ? "Recovery" : "Progress";
-  const energyYield = params.energy ? Number(params.energy) : 78;
+  const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const rawEnergy = Array.isArray(params.energy) ? params.energy[0] : params.energy;
+
+  const mode = rawMode === "Recovery" ? "Recovery" : "Progress";
+  const energyYield = rawEnergy ? Number(rawEnergy) : 78;
   const isRecovery = mode === "Recovery";
 
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
@@ -43,18 +46,12 @@ export default function HomeScreen() {
 
   async function loadProfile() {
     const saved = await AsyncStorage.getItem(PROFILE_KEY);
-
-    if (saved) {
-      setProfile(JSON.parse(saved));
-    }
+    if (saved) setProfile(JSON.parse(saved));
   }
 
   async function loadCompletedQuests() {
     const saved = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
-
-    if (saved) {
-      setCompletedQuests(JSON.parse(saved));
-    }
+    if (saved) setCompletedQuests(JSON.parse(saved));
   }
 
   async function saveCompletedQuests(nextCompleted: string[]) {
@@ -63,13 +60,9 @@ export default function HomeScreen() {
   }
 
   async function toggleQuest(title: string) {
-    let nextCompleted: string[];
-
-    if (completedQuests.includes(title)) {
-      nextCompleted = completedQuests.filter((item) => item !== title);
-    } else {
-      nextCompleted = [...completedQuests, title];
-    }
+    const nextCompleted = completedQuests.includes(title)
+      ? completedQuests.filter((item) => item !== title)
+      : [...completedQuests, title];
 
     await saveCompletedQuests(nextCompleted);
   }
@@ -85,12 +78,6 @@ export default function HomeScreen() {
   const progressMeaning = profile?.progressMeaning?.trim();
 
   function generateQuests(): Quest[] {
-    const baseQuest: Quest = {
-      title: "Morning journal",
-      type: "Mind",
-      steps: 1,
-    };
-
     if (isRecovery) {
       return [
         {
@@ -112,7 +99,11 @@ export default function HomeScreen() {
     }
 
     const progressQuests: Quest[] = [
-      baseQuest,
+      {
+        title: "Morning journal",
+        type: "Mind",
+        steps: 1,
+      },
       {
         title: `Make progress toward: ${topGoal}`,
         type: "Future",
@@ -156,73 +147,101 @@ export default function HomeScreen() {
     return progressQuests;
   }
 
-  const startingQuests = generateQuests();
+  const quests = generateQuests();
 
-  const completedSteps = startingQuests
+  const completedSteps = quests
     .filter((quest) => completedQuests.includes(quest.title))
     .reduce((total, quest) => total + quest.steps, 0);
 
-  const completedVisibleQuests = startingQuests.filter((quest) =>
+  const completedVisibleQuests = quests.filter((quest) =>
     completedQuests.includes(quest.title)
   ).length;
 
+  const flameLabel =
+    energyYield >= 75 ? "Bright Flame" : energyYield >= 45 ? "Steady Flame" : "Low Flame";
+
   return (
     <ScrollView
-      style={[styles.screen, isRecovery ? styles.recoveryScreen : styles.progressScreen]}
+      style={isRecovery ? styles.recoveryScreen : styles.progressScreen}
       contentContainerStyle={styles.container}
     >
-      <View style={styles.header}>
-        <Text style={[styles.logo, isRecovery ? styles.recoveryLogo : styles.progressLogo]}>
-          lit
-        </Text>
-        <Text style={[styles.subtitle, isRecovery ? styles.recoverySubtitle : styles.progressSubtitle]}>
-          Living in Truth
-        </Text>
+      <View style={isRecovery ? styles.recoveryHero : styles.progressHero}>
+        <View style={styles.heroTopRow}>
+          <View>
+            <Text style={styles.modeIcon}>{isRecovery ? "🌙" : "☀️"}</Text>
+            <Text style={styles.heroTitle}>{mode}</Text>
+            <Text style={styles.heroSubtitle}>
+              {isRecovery ? "Protect your flame." : "Spend your flame wisely."}
+            </Text>
+          </View>
+
+          <View style={isRecovery ? styles.recoveryLunaOrb : styles.progressLunaOrb}>
+            <Text style={styles.lunaFace}>{isRecovery ? "😴" : "🙂"}</Text>
+          </View>
+        </View>
+
+        <View style={styles.brandRow}>
+          <View>
+            <Text style={styles.logo}>lit</Text>
+            <Text style={styles.subtitle}>Living in Truth</Text>
+          </View>
+          <Text style={styles.spark}>🔥</Text>
+        </View>
       </View>
 
-      <Link href="/onboarding" asChild>
-        <TouchableOpacity style={styles.onboardingButton}>
-          <Text style={styles.onboardingButtonText}>Set My Path</Text>
-        </TouchableOpacity>
-      </Link>
+      <View style={styles.quickActions}>
+        <Link href="/onboarding" asChild>
+          <TouchableOpacity style={styles.goldButton}>
+            <Text style={styles.goldButtonText}>Set My Path</Text>
+          </TouchableOpacity>
+        </Link>
 
-      <Link href="/sleep-checkin" asChild>
-        <TouchableOpacity style={styles.checkInButton}>
-          <Text style={styles.checkInButtonText}>Start Morning Check-In</Text>
-        </TouchableOpacity>
-      </Link>
+        <Link href="/sleep-checkin" asChild>
+          <TouchableOpacity style={styles.darkButton}>
+            <Text style={styles.darkButtonText}>Morning Check-In</Text>
+          </TouchableOpacity>
+        </Link>
 
-      <Link href="/tomorrow-queue" asChild>
-        <TouchableOpacity style={styles.queueButton}>
-          <Text style={styles.queueButtonText}>Open Tomorrow Queue</Text>
-        </TouchableOpacity>
-      </Link>
+        <Link href="/tomorrow-queue" asChild>
+          <TouchableOpacity style={styles.whiteButton}>
+            <Text style={styles.whiteButtonText}>Tomorrow Queue</Text>
+          </TouchableOpacity>
+        </Link>
 
-      <Link href="/journal" asChild>
-        <TouchableOpacity style={styles.journalButton}>
-          <Text style={styles.journalButtonText}>Open Journal</Text>
-        </TouchableOpacity>
-      </Link>
+        <Link href="/journal" asChild>
+          <TouchableOpacity style={styles.whiteButtonPurple}>
+            <Text style={styles.whiteButtonText}>Journal</Text>
+          </TouchableOpacity>
+        </Link>
 
-      <Link href="/weekly-summary" asChild>
-        <TouchableOpacity style={styles.weeklyButton}>
-          <Text style={styles.weeklyButtonText}>Open Weekly Summary</Text>
-        </TouchableOpacity>
-      </Link>
+        <Link href="/weekly-summary" asChild>
+          <TouchableOpacity style={styles.whiteButtonGreen}>
+            <Text style={styles.whiteButtonText}>Weekly Summary</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
 
-      <View style={styles.lunaCard}>
-        <Text style={styles.lunaName}>{isRecovery ? "🌙 Luna" : "☀️ Luna"}</Text>
+      <View style={isRecovery ? styles.recoveryLunaCard : styles.progressLunaCard}>
+        <Text style={styles.lunaName}>
+          {isRecovery ? "🌙 Luna is in Recovery" : "☀️ Luna is in Progress"}
+        </Text>
         <Text style={styles.lunaText}>
           {isRecovery
-            ? `Hey ${displayName}, you’re in Recovery today. Your path still matters. Let’s protect your energy and take one honest step toward ${topGoal}.`
-            : `Hey ${displayName}, you’re in Progress today. Let’s move toward ${topGoal} in a way that fits your real life.`}
+            ? `Hey ${displayName}, today is not about proving yourself. Let’s protect your energy and take one honest step toward ${topGoal}.`
+            : `Hey ${displayName}, your energy is available today. Let’s use it on ${topGoal} in a way that fits your real life.`}
         </Text>
       </View>
 
-      <View style={[styles.energyCard, isRecovery ? styles.recoveryEnergyCard : styles.progressEnergyCard]}>
-        <Text style={styles.cardLabel}>Energy Yield</Text>
-        <Text style={styles.energy}>🔥 {energyYield}/100</Text>
-        <Text style={styles.mode}>Mode: {mode}</Text>
+      <View style={isRecovery ? styles.recoveryEnergyCard : styles.progressEnergyCard}>
+        <View>
+          <Text style={styles.cardLabel}>Energy Yield</Text>
+          <Text style={styles.energy}>🔥 {energyYield}/100</Text>
+          <Text style={styles.flameLabel}>{flameLabel}</Text>
+        </View>
+
+        <View style={styles.energyBadge}>
+          <Text style={styles.energyBadgeText}>{mode}</Text>
+        </View>
       </View>
 
       {progressMeaning ? (
@@ -239,27 +258,32 @@ export default function HomeScreen() {
         <Text style={styles.goalText}>3. {thirdGoal}</Text>
       </View>
 
-      <Text style={[styles.sectionTitle, isRecovery ? styles.recoveryText : styles.progressText]}>
+      <Text style={isRecovery ? styles.recoverySectionTitle : styles.progressSectionTitle}>
         Today’s Quests
       </Text>
 
-      {startingQuests.map((quest, index) => {
+      {quests.map((quest, index) => {
         const isComplete = completedQuests.includes(quest.title);
 
         return (
-          <View key={index} style={[styles.questCard, isComplete && styles.completedQuestCard]}>
+          <View
+            key={index}
+            style={isComplete ? styles.completedQuestCard : isRecovery ? styles.recoveryQuestCard : styles.progressQuestCard}
+          >
             <TouchableOpacity style={styles.questMain} onPress={() => toggleQuest(quest.title)}>
               <View style={styles.questLeft}>
                 <Text style={styles.checkbox}>{isComplete ? "✅" : "⬜"}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.questTitle, isComplete && styles.completedQuestText]}>
+                <View style={styles.questTextBlock}>
+                  <Text style={isComplete ? styles.completedQuestText : styles.questTitle}>
                     {quest.title}
                   </Text>
                   <Text style={styles.questType}>{quest.type}</Text>
                 </View>
               </View>
 
-              <Text style={styles.steps}>+{quest.steps}</Text>
+              <View style={styles.stepPill}>
+                <Text style={styles.steps}>+{quest.steps}</Text>
+              </View>
             </TouchableOpacity>
 
             {!isComplete && (
@@ -284,7 +308,7 @@ export default function HomeScreen() {
         <Text style={styles.rank}>Rank: {completedSteps >= 5 ? "Builder" : "Wanderer"}</Text>
         <Text style={styles.smallText}>Steps earned today: {completedSteps}</Text>
         <Text style={styles.smallText}>
-          Completed quests: {completedVisibleQuests}/{startingQuests.length}
+          Completed quests: {completedVisibleQuests}/{quests.length}
         </Text>
 
         <TouchableOpacity style={styles.resetButton} onPress={resetTodayProgress}>
@@ -296,149 +320,245 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   progressScreen: {
+    flex: 1,
     backgroundColor: "#F7EBC8",
   },
   recoveryScreen: {
-    backgroundColor: "#111827",
+    flex: 1,
+    backgroundColor: "#0F172A",
   },
   container: {
-    padding: 24,
-    paddingTop: 70,
+    padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
-  header: {
-    marginBottom: 24,
+  progressHero: {
+    backgroundColor: "#FDE68A",
+    borderColor: "#F59E0B",
+    borderWidth: 3,
+    borderRadius: 34,
+    padding: 22,
+    marginBottom: 18,
+  },
+  recoveryHero: {
+    backgroundColor: "#1E1B4B",
+    borderColor: "#8B5CF6",
+    borderWidth: 3,
+    borderRadius: 34,
+    padding: 22,
+    marginBottom: 18,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 26,
+  },
+  modeIcon: {
+    fontSize: 42,
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    color: "#F9FAFB",
+    fontWeight: "800",
+    marginTop: 3,
+  },
+  progressLunaOrb: {
+    height: 86,
+    width: 86,
+    borderRadius: 43,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FBBF24",
+  },
+  recoveryLunaOrb: {
+    height: 86,
+    width: 86,
+    borderRadius: 43,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    backgroundColor: "#312E81",
+    borderColor: "#C4B5FD",
+  },
+  lunaFace: {
+    fontSize: 42,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
   logo: {
-    fontSize: 52,
+    fontSize: 58,
     fontWeight: "900",
-    letterSpacing: -2,
-  },
-  progressLogo: {
-    color: "#1F2937",
-  },
-  recoveryLogo: {
-    color: "#F9FAFB",
+    color: "#FFFFFF",
+    letterSpacing: -3,
   },
   subtitle: {
     fontSize: 16,
+    color: "#F9FAFB",
+    fontWeight: "800",
     marginTop: -4,
   },
-  progressSubtitle: {
-    color: "#6B7280",
+  spark: {
+    fontSize: 38,
   },
-  recoverySubtitle: {
-    color: "#D1D5DB",
+  quickActions: {
+    marginBottom: 18,
   },
-  onboardingButton: {
+  goldButton: {
     backgroundColor: "#FBBF24",
-    padding: 18,
+    padding: 15,
     borderRadius: 20,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 10,
     borderWidth: 2,
     borderColor: "#111827",
   },
-  onboardingButtonText: {
+  goldButtonText: {
     color: "#111827",
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "900",
   },
-  checkInButton: {
+  darkButton: {
     backgroundColor: "#111827",
-    padding: 18,
+    padding: 15,
     borderRadius: 20,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 10,
     borderWidth: 2,
     borderColor: "#FBBF24",
   },
-  checkInButtonText: {
+  darkButtonText: {
     color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  queueButton: {
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 20,
-    alignItems: "center",
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: "#FBBF24",
-  },
-  queueButtonText: {
-    color: "#111827",
     fontSize: 16,
     fontWeight: "900",
   },
-  journalButton: {
+  whiteButton: {
     backgroundColor: "#FFFFFF",
-    padding: 16,
+    padding: 15,
     borderRadius: 20,
     alignItems: "center",
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: "#A78BFA",
-  },
-  journalButtonText: {
-    color: "#111827",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  lunaCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 18,
+    marginBottom: 10,
     borderWidth: 2,
     borderColor: "#E5D39A",
   },
+  whiteButtonPurple: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "#A78BFA",
+  },
+  whiteButtonGreen: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "#22C55E",
+  },
+  whiteButtonText: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  progressLunaCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#F59E0B",
+    borderWidth: 2,
+    borderRadius: 26,
+    padding: 20,
+    marginBottom: 18,
+  },
+  recoveryLunaCard: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#A78BFA",
+    borderWidth: 2,
+    borderRadius: 26,
+    padding: 20,
+    marginBottom: 18,
+  },
   lunaName: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#1F2937",
+    fontSize: 21,
+    fontWeight: "900",
+    color: "#111827",
     marginBottom: 8,
   },
   lunaText: {
     fontSize: 16,
     lineHeight: 24,
     color: "#374151",
-  },
-  energyCard: {
-    borderRadius: 24,
-    padding: 22,
-    marginBottom: 18,
+    fontWeight: "600",
   },
   progressEnergyCard: {
-    backgroundColor: "#1F2937",
+    backgroundColor: "#111827",
+    borderColor: "#FBBF24",
+    borderWidth: 3,
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 18,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   recoveryEnergyCard: {
     backgroundColor: "#312E81",
+    borderColor: "#A78BFA",
+    borderWidth: 3,
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 18,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     marginBottom: 8,
     textTransform: "uppercase",
-    fontWeight: "700",
+    fontWeight: "900",
   },
   energy: {
     fontSize: 38,
     fontWeight: "900",
     color: "#FBBF24",
   },
-  mode: {
-    fontSize: 16,
+  flameLabel: {
     color: "#F9FAFB",
-    marginTop: 6,
+    fontSize: 15,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+  energyBadge: {
+    backgroundColor: "#374151",
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+  energyBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 13,
   },
   truthCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 18,
     marginBottom: 18,
     borderWidth: 2,
@@ -455,11 +575,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     color: "#111827",
-    fontWeight: "700",
+    fontWeight: "800",
   },
   goalsCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 18,
     marginBottom: 24,
     borderWidth: 2,
@@ -472,28 +592,41 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 4,
   },
-  sectionTitle: {
-    fontSize: 24,
+  progressSectionTitle: {
+    fontSize: 26,
     fontWeight: "900",
     marginBottom: 14,
-  },
-  progressText: {
     color: "#1F2937",
   },
-  recoveryText: {
+  recoverySectionTitle: {
+    fontSize: 26,
+    fontWeight: "900",
+    marginBottom: 14,
     color: "#F9FAFB",
   },
-  questCard: {
+  progressQuestCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderColor: "#D1D5DB",
+    borderWidth: 2,
+    borderRadius: 22,
     padding: 16,
     marginBottom: 12,
+  },
+  recoveryQuestCard: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#A78BFA",
     borderWidth: 2,
-    borderColor: "#D1D5DB",
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
   },
   completedQuestCard: {
     backgroundColor: "#DCFCE7",
     borderColor: "#22C55E",
+    borderWidth: 2,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
   },
   questMain: {
     flexDirection: "row",
@@ -504,17 +637,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    gap: 12,
   },
   checkbox: {
     fontSize: 22,
+    marginRight: 12,
+  },
+  questTextBlock: {
+    flex: 1,
   },
   questTitle: {
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "900",
     color: "#111827",
   },
   completedQuestText: {
+    fontSize: 17,
+    fontWeight: "900",
     textDecorationLine: "line-through",
     color: "#166534",
   },
@@ -522,9 +660,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     marginTop: 4,
+    fontWeight: "700",
+  },
+  stepPill: {
+    backgroundColor: "#ECFDF5",
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderWidth: 1,
+    borderColor: "#22C55E",
   },
   steps: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "900",
     color: "#16A34A",
   },
@@ -542,14 +689,14 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 26,
     padding: 20,
     marginTop: 14,
     borderWidth: 2,
     borderColor: "#E5D39A",
   },
   rank: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "900",
     color: "#111827",
   },
@@ -557,6 +704,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6B7280",
     marginTop: 6,
+    fontWeight: "700",
   },
   resetButton: {
     backgroundColor: "#FEE2E2",
@@ -570,18 +718,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
-  weeklyButton: {
-  backgroundColor: "#FFFFFF",
-  padding: 16,
-  borderRadius: 20,
-  alignItems: "center",
-  marginBottom: 18,
-  borderWidth: 2,
-  borderColor: "#22C55E",
-},
-weeklyButtonText: {
-  color: "#111827",
-  fontSize: 16,
-  fontWeight: "900",
-},
 });
