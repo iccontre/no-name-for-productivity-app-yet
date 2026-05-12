@@ -25,8 +25,13 @@ type UserProfile = {
 };
 
 const COMPLETED_QUESTS_KEY = "lit_completed_quests";
+const TODAY_PROGRESS_DATE_KEY = "lit_today_progress_date";
 const PROFILE_KEY = "lit_user_profile";
 const CHECKIN_KEY = "lit_latest_checkin";
+
+function getTodayKey() {
+  return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD format
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -86,8 +91,21 @@ export default function HomeScreen() {
   }
 
   async function loadCompletedQuests() {
-    const saved = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
-    if (saved) setCompletedQuests(JSON.parse(saved));
+    const today = getTodayKey();
+
+    const savedDate = await AsyncStorage.getItem(TODAY_PROGRESS_DATE_KEY);
+    const savedQuests = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
+
+    if (savedDate !== today) {
+      setCompletedQuests([]);
+      await AsyncStorage.setItem(TODAY_PROGRESS_DATE_KEY, today);
+      await AsyncStorage.setItem(COMPLETED_QUESTS_KEY, JSON.stringify([]));
+      return;
+    }
+
+    if (savedQuests) {
+      setCompletedQuests(JSON.parse(savedQuests));
+    }
   }
 
   async function loadLatestCheckIn() {
@@ -107,7 +125,10 @@ export default function HomeScreen() {
   }
 
   async function saveCompletedQuests(nextCompleted: string[]) {
+    const today = getTodayKey();
+
     setCompletedQuests(nextCompleted);
+    await AsyncStorage.setItem(TODAY_PROGRESS_DATE_KEY, today);
     await AsyncStorage.setItem(COMPLETED_QUESTS_KEY, JSON.stringify(nextCompleted));
   }
 
@@ -409,7 +430,7 @@ export default function HomeScreen() {
         </Text>
 
         <TouchableOpacity style={styles.resetButton} onPress={resetTodayProgress}>
-          <Text style={styles.resetButtonText}>Reset Today’s Quest Progress</Text>
+          <Text style={styles.resetButtonText}>Reset Today Plan</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
