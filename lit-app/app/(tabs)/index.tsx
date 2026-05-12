@@ -87,6 +87,11 @@ export default function HomeScreen() {
           Living in Truth
         </Text>
       </View>
+      <Link href="/onboarding" asChild>
+        <TouchableOpacity style={styles.onboardingButton}>
+          <Text style={styles.onboardingButtonText}>Set My Path</Text>
+        </TouchableOpacity>
+      </Link>
 
       <Link href="/sleep-checkin" asChild>
         <TouchableOpacity style={styles.checkInButton}>
@@ -402,4 +407,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
+  onboardingButton: {
+  backgroundColor: "#FBBF24",
+  padding: 18,
+  borderRadius: 20,
+  alignItems: "center",
+  marginBottom: 18,
+  borderWidth: 2,
+  borderColor: "#111827",
+},
+onboardingButtonText: {
+  color: "#111827",
+  fontSize: 17,
+  fontWeight: "900",
+},
 });
