@@ -25,17 +25,27 @@ type UserProfile = {
   goalThree: string;
   biggestObstacle: string;
 };
+type CheckIn = {
+  hours: string;
+  mood: string;
+  stress: string;
+  energy: number;
+  mode: "Recovery" | "Progress";
+  createdAt: string;
+};
 
 const JOURNAL_KEY = "lit_journal_entries";
 const QUEUE_KEY = "lit_tomorrow_queue";
 const COMPLETED_QUESTS_KEY = "lit_completed_quests";
 const PROFILE_KEY = "lit_user_profile";
+const CHECKIN_KEY = "lit_latest_checkin";
 
 export default function WeeklySummaryScreen() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [latestCheckIn, setLatestCheckIn] = useState<CheckIn | null>(null);
 
   useEffect(() => {
     loadWeeklyData();
@@ -46,11 +56,13 @@ export default function WeeklySummaryScreen() {
     const savedQueue = await AsyncStorage.getItem(QUEUE_KEY);
     const savedCompleted = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
     const savedProfile = await AsyncStorage.getItem(PROFILE_KEY);
+    const savedCheckIn = await AsyncStorage.getItem(CHECKIN_KEY);
 
     if (savedJournal) setJournalEntries(JSON.parse(savedJournal));
     if (savedQueue) setQueueItems(JSON.parse(savedQueue));
     if (savedCompleted) setCompletedQuests(JSON.parse(savedCompleted));
     if (savedProfile) setProfile(JSON.parse(savedProfile));
+    if (savedCheckIn) setLatestCheckIn(JSON.parse(savedCheckIn));
   }
 
   const displayName = profile?.name?.trim() || "there";
@@ -60,6 +72,16 @@ export default function WeeklySummaryScreen() {
   const completedCount = completedQuests.length;
   const journalCount = journalEntries.length;
   const queueCount = queueItems.length;
+  const latestMode = latestCheckIn?.mode || "Progress";
+  const latestEnergy = latestCheckIn?.energy ?? 78;
+  const latestHours = latestCheckIn?.hours || "—";
+  const latestMood = latestCheckIn?.mood || "—";
+  const latestStress = latestCheckIn?.stress || "—";
+
+  const energyMessage =
+    latestMode === "Recovery"
+      ? "Your latest check-in suggests Recovery. That means your week may need lighter goals, more rest, and smaller honest steps."
+      : "Your latest check-in suggests Progress. That means you may have energy available for stronger action toward your current path.";
 
   const moodNumbers = journalEntries
     .map((entry) => Number(entry.mood))
@@ -98,6 +120,16 @@ export default function WeeklySummaryScreen() {
         <Text style={styles.mainText}>{topGoal}</Text>
         <Text style={styles.subText}>Progress means: {progressMeaning}</Text>
       </View>
+
+      <View style={latestMode === "Recovery" ? styles.recoveryEnergyCard : styles.progressEnergyCard}>
+        <Text style={styles.energyCardLabel}>Latest Check-In</Text>
+        <Text style={styles.energyMain}>🔥 {latestEnergy}/100</Text>
+        <Text style={styles.energyMode}>{latestMode}</Text>
+        <Text style={styles.energyDetails}>
+            Sleep: {latestHours} hrs • Mood: {latestMood}/10 • Stress: {latestStress}/10
+        </Text>
+        <Text style={styles.energyMessage}>{energyMessage}</Text>
+        </View>
 
       <View style={styles.grid}>
         <View style={styles.statCard}>
@@ -339,4 +371,51 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "900",
   },
+  progressEnergyCard: {
+  backgroundColor: "#111827",
+  borderRadius: 24,
+  padding: 20,
+  marginBottom: 18,
+  borderWidth: 2,
+  borderColor: "#FBBF24",
+},
+recoveryEnergyCard: {
+  backgroundColor: "#312E81",
+  borderRadius: 24,
+  padding: 20,
+  marginBottom: 18,
+  borderWidth: 2,
+  borderColor: "#A78BFA",
+},
+energyCardLabel: {
+  fontSize: 14,
+  fontWeight: "900",
+  color: "#D1D5DB",
+  textTransform: "uppercase",
+  marginBottom: 8,
+},
+energyMain: {
+  fontSize: 36,
+  fontWeight: "900",
+  color: "#FBBF24",
+},
+energyMode: {
+  fontSize: 20,
+  fontWeight: "900",
+  color: "#FFFFFF",
+  marginTop: 4,
+},
+energyDetails: {
+  fontSize: 15,
+  lineHeight: 22,
+  color: "#E5E7EB",
+  marginTop: 10,
+  fontWeight: "700",
+},
+energyMessage: {
+  fontSize: 15,
+  lineHeight: 22,
+  color: "#F9FAFB",
+  marginTop: 10,
+},
 });
