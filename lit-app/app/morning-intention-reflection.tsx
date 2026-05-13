@@ -58,7 +58,7 @@ export default function MorningIntentionReflectionScreen() {
     if (saved) {
       const parsed: PreSleepIntention = JSON.parse(saved);
       setLatestIntention(parsed);
-      setTodayAction(parsed.firstSmallAction || "");
+      setTodayAction("");
     }
   }
 
@@ -142,6 +142,21 @@ export default function MorningIntentionReflectionScreen() {
             {latestIntention.dreamSymbol ? (
               <Text style={styles.supportingText}>Dream symbol: {latestIntention.dreamSymbol}</Text>
             ) : null}
+
+            {latestIntention.firstSmallAction ? (
+              <View style={styles.suggestionBox}>
+                <Text style={styles.suggestionLabel}>Suggested action from last night</Text>
+                <Text style={styles.suggestionText}>{latestIntention.firstSmallAction}</Text>
+
+                <TouchableOpacity
+                  style={styles.useSuggestionButton}
+                  onPress={() => setTodayAction(latestIntention.firstSmallAction)}
+                >
+                  <Text style={styles.useSuggestionButtonText}>Use This Action</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
           </View>
 
           <View style={styles.card}>
@@ -181,7 +196,7 @@ export default function MorningIntentionReflectionScreen() {
             <TextInput
               style={styles.textArea}
               multiline
-              placeholder="Example: Work on the assignment for 10 minutes."
+              placeholder="Write one small action for today, or use last night’s suggestion above."
               placeholderTextColor="#9CA3AF"
               value={todayAction}
               onChangeText={setTodayAction}
@@ -389,6 +404,39 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: "#111827",
     fontSize: 16,
+    fontWeight: "900",
+  },
+  suggestionBox: {
+  backgroundColor: "#EEF2FF",
+  borderRadius: 18,
+  padding: 16,
+  marginTop: 14,
+  borderWidth: 2,
+  borderColor: "#A78BFA",
+  },
+  suggestionLabel: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  suggestionText: {
+    fontSize: 16,
+    lineHeight: 23,
+    color: "#111827",
+    fontWeight: "800",
+    marginBottom: 12,
+  },
+  useSuggestionButton: {
+    backgroundColor: "#312E81",
+    padding: 12,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  useSuggestionButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "900",
   },
 });
