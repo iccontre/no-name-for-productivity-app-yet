@@ -317,7 +317,7 @@ export default function HomeScreen() {
 
         <View style={styles.actionGrid}>
           <TouchableOpacity
-            style={styles.smallActionButton}
+            style={styles.smallActionButtonGold}
             onPress={() => navigateWithHaptic("/tomorrow-queue")}
           >
             <Text style={styles.smallActionIcon}>📌</Text>
@@ -684,6 +684,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#A78BFA",
+  },
+  smallActionButtonGold: {
+  width: "48%",
+  backgroundColor: "#FFFBEB",
+  padding: 14,
+  borderRadius: 18,
+  alignItems: "center",
+  borderWidth: 2,
+  borderColor: "#FBBF24",
   },
   smallActionButtonNight: {
     width: "48%",
