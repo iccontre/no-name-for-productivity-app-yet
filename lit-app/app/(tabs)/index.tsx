@@ -191,6 +191,8 @@ export default function HomeScreen() {
   const secondGoal = profile?.goalTwo?.trim() || "your next goal";
   const thirdGoal = profile?.goalThree?.trim() || "your future";
   const progressMeaning = profile?.progressMeaning?.trim();
+  const longTermDream = profile?.longTermDream?.trim();
+  const dreamCategory = profile?.dreamCategory?.trim();
 
   function getCategoryQuests(category: string, modeType: "Recovery" | "Progress"): Quest[] {
     const normalized = category || "Purpose";
@@ -268,7 +270,6 @@ export default function HomeScreen() {
     return [...baseQuests, ...goalQuests, resourceQuest, movementQuest, transportQuest];
   }
 
-
   const quests = generateQuests();
 
   const completedSteps = quests
@@ -292,194 +293,222 @@ export default function HomeScreen() {
       contentContainerStyle={styles.container}
     >
       <View style={isRecovery ? styles.recoveryHero : styles.progressHero}>
-        <View style={styles.heroTopRow}>
-          <View>
-            <Text style={styles.modeIcon}>{isRecovery ? "🌙" : "☀️"}</Text>
-            <Text style={styles.heroTitle}>{mode}</Text>
-            <Text style={styles.heroSubtitle}>
-              {isRecovery ? "Protect your flame." : "Spend your flame wisely."}
+        <View style={styles.worldTopRow}>
+          <View style={styles.worldLeft}>
+            <Text style={styles.worldLabel}>{isRecovery ? "Recovery Realm" : "Progress Realm"}</Text>
+            <Text style={styles.worldTitle}>{isRecovery ? "Recovery Mode" : "Progress Mode"}</Text>
+            <Text style={styles.worldStatus}>
+              {isRecovery
+                ? "Protect your flame and restore direction"
+                : "Energy available for meaningful action"}
             </Text>
           </View>
 
-          <View style={isRecovery ? styles.recoveryLunaOrb : styles.progressLunaOrb}>
-            <Text style={styles.lunaFace}>{isRecovery ? "😴" : "🙂"}</Text>
+          <View style={isRecovery ? styles.recoveryGuideOrb : styles.progressGuideOrb}>
+            <Text style={styles.guideOrbLabel}>Luna</Text>
+            <Text style={styles.guideOrbState}>{isRecovery ? "Calm Guide" : "Active Guide"}</Text>
           </View>
         </View>
 
-        <View style={styles.brandRow}>
-          <View>
-            <Text style={styles.logo}>lit</Text>
-            <Text style={styles.subtitle}>Living in Truth</Text>
+        <View style={styles.worldFooterRow}>
+          <Text style={styles.logo}>lit</Text>
+          <View style={styles.realmBadge}>
+            <Text style={styles.realmBadgeText}>{isRecovery ? "Moonlit" : "Sunlit"}</Text>
           </View>
-          <Text style={styles.spark}>🔥</Text>
         </View>
       </View>
 
-      <View style={styles.actionPanel}>
-        <Text style={styles.actionPanelTitle}>Start Today</Text>
+      <View style={styles.commandSection}>
+        <Text style={styles.sectionTitle}>Start Today</Text>
 
         <TouchableOpacity
-          style={styles.primaryActionButton}
+          style={[styles.commandTileLarge, isRecovery ? styles.commandTileRecovery : styles.commandTileProgress]}
           onPress={() => navigateWithHaptic("/sleep-checkin")}
         >
-          <Text style={styles.primaryActionIcon}>🔥</Text>
-          <View>
-            <Text style={styles.primaryActionText}>Morning Check-In</Text>
-            <Text style={styles.actionSubTextLight}>Set today's energy</Text>
+          <View style={styles.commandTileHead}>
+            <Text style={styles.commandTileIcon}>⚡</Text>
+            <View style={styles.commandPill}>
+              <Text style={styles.commandPillText}>Core Ritual</Text>
+            </View>
           </View>
+          <Text style={styles.commandTitle}>Morning Check-In</Text>
+          <Text style={styles.commandSubtitle}>Set today’s energy</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.goldActionButton}
+          style={[styles.commandTileLarge, isRecovery ? styles.commandTileRecovery : styles.commandTileProgress]}
           onPress={() => navigateWithHaptic("/onboarding")}
         >
-          <Text style={styles.primaryActionIcon}>🧭</Text>
-          <View>
-            <Text style={styles.goldActionText}>Set My Path</Text>
-            <Text style={styles.actionSubTextDark}>Update your long-term direction</Text>
+          <View style={styles.commandTileHead}>
+            <Text style={styles.commandTileIcon}>🧭</Text>
+            <View style={styles.commandPill}>
+              <Text style={styles.commandPillText}>Path</Text>
+            </View>
           </View>
+          <Text style={styles.commandTitle}>Set My Path</Text>
+          <Text style={styles.commandSubtitle}>Choose your dream</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.actionPanel}>
-        <Text style={styles.actionPanelTitle}>Today Plan</Text>
-
-        <View style={styles.actionGrid}>
+      <View style={styles.commandSection}>
+        <Text style={styles.sectionTitle}>Today Plan</Text>
+        <View style={styles.tileRow}>
           <TouchableOpacity
-            style={styles.smallActionButtonGold}
+            style={[styles.commandTileHalf, styles.tileGold]}
             onPress={() => navigateWithHaptic("/tomorrow-queue")}
           >
-            <Text style={styles.smallActionIcon}>📌</Text>
-            <Text style={styles.smallActionText}>Tomorrow Queue</Text>
-            <Text style={styles.smallActionSubText}>Plan your next step</Text>
+            <Text style={styles.commandTileIcon}>📌</Text>
+            <Text style={styles.commandTitleSmall}>Tomorrow Queue</Text>
+            <Text style={styles.commandSubtitleSmall}>Save future actions</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.smallActionButtonGreen}
+            style={[styles.commandTileHalf, styles.tileGreen]}
             onPress={() => navigateWithHaptic("/weekly-summary")}
           >
-            <Text style={styles.smallActionIcon}>📊</Text>
-            <Text style={styles.smallActionText}>Weekly Summary</Text>
-            <Text style={styles.smallActionSubText}>Review your momentum</Text>
+            <Text style={styles.commandTileIcon}>📊</Text>
+            <Text style={styles.commandTitleSmall}>Weekly Summary</Text>
+            <Text style={styles.commandSubtitleSmall}>Review your pattern</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.actionPanel}>
-        <Text style={styles.actionPanelTitle}>Mind & Sleep</Text>
-
-        <View style={styles.actionGrid}>
+      <View style={styles.commandSection}>
+        <Text style={styles.sectionTitle}>Mind & Sleep</Text>
+        <View style={styles.tileRow}>
           <TouchableOpacity
-            style={styles.smallActionButtonPurple}
+            style={[styles.commandTileHalf, styles.tilePurple]}
             onPress={() => navigateWithHaptic("/journal")}
           >
-            <Text style={styles.smallActionIcon}>📓</Text>
-            <Text style={styles.smallActionText}>Journal</Text>
-            <Text style={styles.smallActionSubText}>Name what is true</Text>
+            <Text style={styles.commandTileIcon}>📓</Text>
+            <Text style={styles.commandTitleSmall}>Journal</Text>
+            <Text style={styles.commandSubtitleSmall}>Track your thoughts</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.smallActionButtonPurple}
+            style={[styles.commandTileHalf, styles.tilePurple]}
             onPress={() => navigateWithHaptic("/awareness-check")}
           >
-            <Text style={styles.smallActionIcon}>🧠</Text>
-            <Text style={styles.smallActionText}>Awareness Check</Text>
-            <Text style={styles.smallActionSubText}>Pause before reacting</Text>
+            <Text style={styles.commandTileIcon}>🧠</Text>
+            <Text style={styles.commandTitleSmall}>Awareness Check</Text>
+            <Text style={styles.commandSubtitleSmall}>Notice attention</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.actionGridSecondRow}>
+        <View style={styles.tileRowSecond}>
           <TouchableOpacity
-            style={styles.smallActionButtonNight}
+            style={[styles.commandTileHalf, styles.tileNight]}
             onPress={() => navigateWithHaptic("/pre-sleep-intention")}
           >
-            <Text style={styles.smallActionIcon}>🌙</Text>
-            <Text style={styles.smallActionText}>Pre-Sleep Intention</Text>
-            <Text style={styles.smallActionSubText}>Close your day clearly</Text>
+            <Text style={styles.commandTileIcon}>🌙</Text>
+            <Text style={styles.commandTitleSmall}>Pre-Sleep Intention</Text>
+            <Text style={styles.commandSubtitleSmall}>Give tomorrow direction</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.smallActionButtonNight}
+            style={[styles.commandTileHalf, styles.tileNight]}
             onPress={() => navigateWithHaptic("/morning-intention-reflection")}
           >
-            <Text style={styles.smallActionIcon}>☀️</Text>
-            <Text style={styles.smallActionText}>Morning Reflection</Text>
-            <Text style={styles.smallActionSubText}>Reconnect to last night</Text>
+            <Text style={styles.commandTileIcon}>☀️</Text>
+            <Text style={styles.commandTitleSmall}>Morning Reflection</Text>
+            <Text style={styles.commandSubtitleSmall}>Connect night to action</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.actionPanel}>
-        <Text style={styles.actionPanelTitle}>Growth</Text>
-
+      <View style={styles.commandSection}>
+        <Text style={styles.sectionTitle}>Growth</Text>
         <TouchableOpacity
-          style={styles.fullActionButtonPurple}
+          style={[styles.commandTileLarge, styles.tileGrowth]}
           onPress={() => navigateWithHaptic("/next-chapter")}
         >
-          <Text style={styles.smallActionIcon}>🌱</Text>
-          <Text style={styles.fullActionText}>Next Chapter</Text>
+          <Text style={styles.commandTileIcon}>🌱</Text>
+          <Text style={styles.commandTitle}>Next Chapter</Text>
+          <Text style={styles.commandSubtitle}>Evolve your goals</Text>
         </TouchableOpacity>
       </View>
 
       {latestIntention ? (
-        <View style={styles.intentionPreviewCard}>
-          <Text style={styles.intentionPreviewLabel}>Last night’s intention</Text>
-          <Text style={styles.intentionPreviewText}>{latestIntention.intention}</Text>
+        <View style={styles.signalCard}>
+          <View style={styles.signalTopRow}>
+            <Text style={styles.signalLabel}>Night Signal</Text>
+            <View style={styles.signalPill}>
+              <Text style={styles.signalPillText}>Carry Forward</Text>
+            </View>
+          </View>
+          <Text style={styles.signalText}>{latestIntention.intention}</Text>
 
           {latestIntention.firstSmallAction ? (
-            <Text style={styles.intentionPreviewAction}>
+            <Text style={styles.signalActionText}>
               First small action: {latestIntention.firstSmallAction}
             </Text>
           ) : null}
 
           <TouchableOpacity
-            style={styles.intentionReflectButton}
+            style={styles.signalButton}
             onPress={() => navigateWithHaptic("/morning-intention-reflection")}
           >
-            <Text style={styles.intentionReflectButtonText}>Reflect This Morning</Text>
+            <Text style={styles.signalButtonText}>Reflect This Morning</Text>
           </TouchableOpacity>
         </View>
       ) : null}
 
-      <View style={isRecovery ? styles.recoveryLunaCard : styles.progressLunaCard}>
-        <Text style={styles.lunaName}>
-          {isRecovery ? "🌙 Luna is in Recovery" : "☀️ Luna is in Progress"}
-        </Text>
-        <Text style={styles.lunaText}>
-          {isRecovery
-            ? `Hey ${displayName}, Recovery is still progress. Protect your flame and take one honest step toward ${topGoal}.`
-            : `Hey ${displayName}, progress is personal. Spend your energy truthfully on ${topGoal}.`}
-        </Text>
-      </View>
-
       <View style={isRecovery ? styles.recoveryEnergyCard : styles.progressEnergyCard}>
         <View>
-          <Text style={styles.cardLabel}>Energy Yield</Text>
-          <Text style={styles.energy}>🔥 {energyYield}/100</Text>
+          <Text style={styles.energyLabel}>Energy Yield</Text>
+          <Text style={styles.energyValue}>🔥 {energyYield}/100</Text>
           <Text style={styles.flameLabel}>{flameLabel}</Text>
+          <Text style={styles.energyLine}>
+            {isRecovery
+              ? "Use your remaining energy carefully."
+              : "Spend your energy on what matters most."}
+          </Text>
         </View>
 
-        <View style={styles.energyBadge}>
-          <Text style={styles.energyBadgeText}>{mode}</Text>
+        <View style={styles.modeBadge}>
+          <Text style={styles.modeBadgeText}>{mode}</Text>
         </View>
+      </View>
+
+      <View style={isRecovery ? styles.recoveryBriefingCard : styles.progressBriefingCard}>
+        <Text style={styles.briefingTitle}>Luna’s Briefing</Text>
+        <Text style={styles.briefingText}>
+          {isRecovery
+            ? "Recovery is still progress. Today’s job is to protect your energy and keep one promise to yourself."
+            : "Progress is personal. Today’s job is to spend your energy on the path that matters to you."}
+        </Text>
+        <Text style={styles.briefingGoal}>Top goal: {topGoal}</Text>
       </View>
 
       {progressMeaning ? (
-        <View style={styles.truthCard}>
-          <Text style={styles.truthLabel}>Your definition of progress</Text>
-          <Text style={styles.truthText}>{progressMeaning}</Text>
+        <View style={styles.progressMeaningCard}>
+          <Text style={styles.progressMeaningLabel}>Your definition of progress</Text>
+          <Text style={styles.progressMeaningText}>{progressMeaning}</Text>
         </View>
       ) : null}
 
-      <View style={styles.goalsCard}>
-        <Text style={styles.cardLabel}>Your Current Path</Text>
-        <Text style={styles.goalText}>1. {topGoal}</Text>
-        <Text style={styles.goalText}>2. {secondGoal}</Text>
-        <Text style={styles.goalText}>3. {thirdGoal}</Text>
+      <View style={styles.pathCard}>
+        <Text style={styles.pathTitle}>Current Path</Text>
+
+        {dreamCategory ? <Text style={styles.pathMeta}>Category: {dreamCategory}</Text> : null}
+        {longTermDream ? <Text style={styles.pathMeta}>Long-term dream: {longTermDream}</Text> : null}
+
+        <View style={styles.pathStepRow}>
+          <Text style={styles.pathStepNumber}>1</Text>
+          <Text style={styles.pathStepText}>{topGoal}</Text>
+        </View>
+        <View style={styles.pathStepRow}>
+          <Text style={styles.pathStepNumber}>2</Text>
+          <Text style={styles.pathStepText}>{secondGoal}</Text>
+        </View>
+        <View style={styles.pathStepRow}>
+          <Text style={styles.pathStepNumber}>3</Text>
+          <Text style={styles.pathStepText}>{thirdGoal}</Text>
+        </View>
       </View>
 
-      <Text style={isRecovery ? styles.recoverySectionTitle : styles.progressSectionTitle}>
-        Today’s Quests
+      <Text style={isRecovery ? styles.questBoardTitleRecovery : styles.questBoardTitleProgress}>
+        Quest Board
       </Text>
 
       {quests.map((quest, index) => {
@@ -503,7 +532,11 @@ export default function HomeScreen() {
                   <Text style={isComplete ? styles.completedQuestText : styles.questTitle}>
                     {quest.title}
                   </Text>
-                  <Text style={styles.questType}>{quest.type}</Text>
+                  <View style={styles.questMetaRow}>
+                    <View style={styles.questTypeBadge}>
+                      <Text style={styles.questTypeBadgeText}>{quest.type}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
@@ -521,7 +554,7 @@ export default function HomeScreen() {
                 asChild
               >
                 <TouchableOpacity style={styles.reflectButton} onPress={lightHaptic}>
-                  <Text style={styles.reflectButtonText}>Reflect if missed — data, not defeat</Text>
+                  <Text style={styles.reflectButtonText}>Reflect if missed</Text>
                 </TouchableOpacity>
               </Link>
             )}
@@ -530,7 +563,7 @@ export default function HomeScreen() {
       })}
 
       <View style={styles.summaryCard}>
-        <Text style={styles.cardLabel}>Progress</Text>
+        <Text style={styles.summaryLabel}>Rank Panel</Text>
         <Text style={styles.rank}>Rank: {completedSteps >= 5 ? "Builder" : "Wanderer"}</Text>
         <Text style={styles.smallText}>Steps earned today: {completedSteps}</Text>
         <Text style={styles.smallText}>
@@ -556,298 +589,290 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 56,
     paddingBottom: 40,
   },
+
   progressHero: {
     backgroundColor: "#FDE68A",
     borderColor: "#F59E0B",
     borderWidth: 3,
-    borderRadius: 34,
-    padding: 22,
-    marginBottom: 18,
+    borderRadius: 30,
+    padding: 20,
+    marginBottom: 16,
   },
   recoveryHero: {
     backgroundColor: "#1E1B4B",
     borderColor: "#8B5CF6",
     borderWidth: 3,
-    borderRadius: 34,
-    padding: 22,
-    marginBottom: 18,
+    borderRadius: 30,
+    padding: 20,
+    marginBottom: 16,
   },
-  heroTopRow: {
+  worldTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 26,
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
-  modeIcon: {
-    fontSize: 42,
+  worldLeft: {
+    flex: 1,
+    marginRight: 12,
   },
-  heroTitle: {
-    fontSize: 32,
+  worldLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    color: "#F9FAFB",
+    marginBottom: 6,
+  },
+  worldTitle: {
+    fontSize: 30,
     fontWeight: "900",
     color: "#FFFFFF",
+    marginBottom: 4,
   },
-  heroSubtitle: {
-    fontSize: 15,
+  worldStatus: {
+    fontSize: 14,
     color: "#F9FAFB",
-    fontWeight: "800",
-    marginTop: 2,
+    fontWeight: "700",
+    lineHeight: 20,
   },
-  progressLunaOrb: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 3,
+  progressGuideOrb: {
+    width: 110,
+    borderRadius: 18,
+    padding: 10,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 2,
     borderColor: "#F59E0B",
     alignItems: "center",
-    justifyContent: "center",
   },
-  recoveryLunaOrb: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+  recoveryGuideOrb: {
+    width: 110,
+    borderRadius: 18,
+    padding: 10,
     backgroundColor: "#312E81",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#A78BFA",
     alignItems: "center",
-    justifyContent: "center",
   },
-  lunaFace: {
-    fontSize: 32,
+  guideOrbLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#F9FAFB",
+    textTransform: "uppercase",
+    marginBottom: 6,
   },
-  brandRow: {
+  guideOrbState: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#E5E7EB",
+    textAlign: "center",
+  },
+  worldFooterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
   },
   logo: {
-    fontSize: 52,
+    fontSize: 48,
     fontWeight: "900",
     color: "#FFFFFF",
     letterSpacing: -2,
   },
-  subtitle: {
-    marginTop: -6,
-    fontSize: 14,
-    color: "#E5E7EB",
-    fontWeight: "700",
+  realmBadge: {
+    backgroundColor: "#111827",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
   },
-  spark: {
-    fontSize: 34,
+  realmBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 12,
   },
-  actionPanel: {
+
+  commandSection: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: "#E5D39A",
-    padding: 16,
-    marginBottom: 16,
+    padding: 14,
+    marginBottom: 14,
   },
-  actionPanelTitle: {
+  sectionTitle: {
     fontSize: 20,
     fontWeight: "900",
     color: "#111827",
-    marginBottom: 12,
-  },
-  primaryActionButton: {
-    backgroundColor: "#111827",
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
     marginBottom: 10,
   },
-  goldActionButton: {
-    backgroundColor: "#FDE68A",
+  commandTileLarge: {
     borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
     borderWidth: 2,
-    borderColor: "#F59E0B",
+    padding: 14,
+    marginBottom: 10,
+  },
+  commandTileRecovery: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#A78BFA",
+  },
+  commandTileProgress: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FBBF24",
+  },
+  commandTileHead: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 8,
   },
-  primaryActionIcon: {
+  commandTileIcon: {
     fontSize: 18,
-    marginRight: 10,
   },
-  primaryActionText: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-    fontSize: 16,
+  commandPill: {
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#9CA3AF",
+    backgroundColor: "#FFFFFF",
   },
-  goldActionText: {
-    color: "#111827",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-  actionSubTextLight: {
-    color: "#D1D5DB",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  actionSubTextDark: {
+  commandPillText: {
+    fontSize: 11,
+    fontWeight: "800",
     color: "#374151",
-    fontSize: 12,
-    fontWeight: "700",
   },
-  actionGrid: {
+  commandTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 4,
+  },
+  commandSubtitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4B5563",
+  },
+
+  tileRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  actionGridSecondRow: {
+  tileRowSecond: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
   },
-  smallActionButtonGold: {
+  commandTileHalf: {
     width: "48%",
-    backgroundColor: "#FFFBEB",
-    padding: 14,
     borderRadius: 18,
-    alignItems: "center",
     borderWidth: 2,
+    padding: 12,
+    minHeight: 108,
+  },
+  tileGold: {
+    backgroundColor: "#FFFBEB",
     borderColor: "#FBBF24",
   },
-  smallActionButtonGreen: {
-    width: "48%",
+  tileGreen: {
     backgroundColor: "#F0FDF4",
-    padding: 14,
-    borderRadius: 18,
-    alignItems: "center",
-    borderWidth: 2,
     borderColor: "#22C55E",
   },
-  smallActionButtonPurple: {
-    width: "48%",
+  tilePurple: {
     backgroundColor: "#F9FAFB",
-    padding: 14,
-    borderRadius: 18,
-    alignItems: "center",
-    borderWidth: 2,
     borderColor: "#A78BFA",
   },
-  smallActionButtonNight: {
-    width: "48%",
+  tileNight: {
     backgroundColor: "#EEF2FF",
-    padding: 14,
-    borderRadius: 18,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#A78BFA",
+    borderColor: "#818CF8",
   },
-  fullActionButtonPurple: {
+  tileGrowth: {
     backgroundColor: "#F9FAFB",
-    padding: 14,
-    borderRadius: 18,
-    alignItems: "center",
-    borderWidth: 2,
     borderColor: "#A78BFA",
   },
-  smallActionIcon: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  smallActionText: {
-    color: "#111827",
-    fontSize: 13,
+  commandTitleSmall: {
+    fontSize: 14,
     fontWeight: "900",
-    textAlign: "center",
+    color: "#111827",
+    marginTop: 8,
+    marginBottom: 3,
   },
-  smallActionSubText: {
+  commandSubtitleSmall: {
+    fontSize: 12,
+    fontWeight: "700",
     color: "#4B5563",
-    fontWeight: "700",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 2,
+    lineHeight: 17,
   },
-  fullActionText: {
-    color: "#111827",
-    fontSize: 15,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  intentionPreviewCard: {
+
+  signalCard: {
     backgroundColor: "#EEF2FF",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 18,
+    borderRadius: 22,
     borderWidth: 2,
-    borderColor: "#A78BFA",
-  },
-  intentionPreviewLabel: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    fontWeight: "900",
-  },
-  intentionPreviewText: {
-    fontSize: 20,
-    lineHeight: 28,
-    color: "#111827",
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  intentionPreviewAction: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#374151",
-    fontWeight: "700",
+    borderColor: "#818CF8",
+    padding: 16,
     marginBottom: 14,
   },
-  intentionReflectButton: {
-    backgroundColor: "#312E81",
-    padding: 14,
-    borderRadius: 16,
+  signalTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#A78BFA",
-  },
-  intentionReflectButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  progressLunaCard: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#F59E0B",
-    borderWidth: 2,
-    borderRadius: 26,
-    padding: 20,
-    marginBottom: 18,
-  },
-  recoveryLunaCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 26,
-    padding: 20,
-    marginBottom: 18,
-  },
-  lunaName: {
-    fontSize: 21,
-    fontWeight: "900",
-    color: "#111827",
     marginBottom: 8,
   },
-  lunaText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#374151",
-    fontWeight: "600",
+  signalLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    color: "#3730A3",
   },
+  signalPill: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#A5B4FC",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  signalPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#3730A3",
+  },
+  signalText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#111827",
+    lineHeight: 23,
+    marginBottom: 8,
+  },
+  signalActionText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#374151",
+    marginBottom: 12,
+  },
+  signalButton: {
+    backgroundColor: "#312E81",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#A78BFA",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  signalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
   progressEnergyCard: {
     backgroundColor: "#111827",
     borderColor: "#FBBF24",
     borderWidth: 3,
-    borderRadius: 28,
-    padding: 22,
-    marginBottom: 18,
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -856,115 +881,192 @@ const styles = StyleSheet.create({
     backgroundColor: "#312E81",
     borderColor: "#A78BFA",
     borderWidth: 3,
-    borderRadius: 28,
-    padding: 22,
-    marginBottom: 18,
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cardLabel: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    marginBottom: 8,
-    textTransform: "uppercase",
+  energyLabel: {
+    fontSize: 12,
     fontWeight: "900",
+    textTransform: "uppercase",
+    color: "#D1D5DB",
+    marginBottom: 6,
   },
-  energy: {
-    fontSize: 38,
+  energyValue: {
+    fontSize: 34,
     fontWeight: "900",
     color: "#FBBF24",
   },
   flameLabel: {
-    color: "#F9FAFB",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
+    color: "#F9FAFB",
+    marginTop: 2,
+    marginBottom: 4,
   },
-  energyBadge: {
+  energyLine: {
+    color: "#E5E7EB",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  modeBadge: {
     backgroundColor: "#0F172A",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
     borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#FFFFFF",
   },
-  energyBadgeText: {
+  modeBadgeText: {
     color: "#FFFFFF",
-    fontSize: 13,
     fontWeight: "900",
+    fontSize: 12,
   },
-  truthCard: {
+
+  progressBriefingCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
-    padding: 18,
-    marginBottom: 18,
+    borderWidth: 2,
+    borderColor: "#FBBF24",
+    padding: 16,
+    marginBottom: 14,
+  },
+  recoveryBriefingCard: {
+    backgroundColor: "#EEF2FF",
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "#A78BFA",
+    padding: 16,
+    marginBottom: 14,
+  },
+  briefingTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  briefingText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#374151",
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  briefingGoal: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "800",
+  },
+
+  progressMeaningCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: "#E5D39A",
+    padding: 14,
+    marginBottom: 14,
   },
-  truthLabel: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginBottom: 8,
-    textTransform: "uppercase",
+  progressMeaningLabel: {
+    fontSize: 12,
     fontWeight: "900",
+    textTransform: "uppercase",
+    color: "#6B7280",
+    marginBottom: 6,
   },
-  truthText: {
-    fontSize: 16,
-    lineHeight: 24,
+  progressMeaningText: {
+    fontSize: 14,
+    lineHeight: 22,
     color: "#374151",
     fontWeight: "700",
   },
-  goalsCard: {
+
+  pathCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
-    padding: 18,
-    marginBottom: 18,
     borderWidth: 2,
     borderColor: "#E5D39A",
+    padding: 16,
+    marginBottom: 14,
   },
-  goalText: {
-    fontSize: 15,
-    color: "#111827",
+  pathTitle: {
+    fontSize: 20,
     fontWeight: "900",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  pathMeta: {
+    fontSize: 13,
+    color: "#4B5563",
+    fontWeight: "700",
     marginBottom: 6,
   },
-  progressSectionTitle: {
-    fontSize: 26,
+  pathStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  pathStepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#111827",
+    color: "#FFFFFF",
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontWeight: "900",
+    fontSize: 12,
+    overflow: "hidden",
+    marginRight: 10,
+    paddingTop: 4,
+  },
+  pathStepText: {
+    flex: 1,
+    fontSize: 15,
     color: "#111827",
+    fontWeight: "800",
+  },
+
+  questBoardTitleProgress: {
+    fontSize: 24,
     fontWeight: "900",
+    color: "#111827",
     marginBottom: 10,
     marginTop: 2,
   },
-  recoverySectionTitle: {
-    fontSize: 26,
+  questBoardTitleRecovery: {
+    fontSize: 24,
+    fontWeight: "900",
     color: "#F9FAFB",
-    fontWeight: "900",
     marginBottom: 10,
     marginTop: 2,
   },
+
   progressQuestCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: "#E5D39A",
+    padding: 12,
+    marginBottom: 10,
   },
   recoveryQuestCard: {
     backgroundColor: "#1E1B4B",
-    borderRadius: 22,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: "#8B5CF6",
+    padding: 12,
+    marginBottom: 10,
   },
   completedQuestCard: {
     backgroundColor: "#ECFDF5",
-    borderRadius: 22,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: "#34D399",
+    padding: 12,
+    marginBottom: 10,
   },
   questMain: {
     flexDirection: "row",
@@ -977,91 +1079,111 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   checkbox: {
-    fontSize: 24,
+    fontSize: 23,
     marginRight: 10,
   },
   questTextBlock: {
     flex: 1,
   },
   questTitle: {
-    fontSize: 16,
-    color: "#FFFFFF",
+    fontSize: 15,
     fontWeight: "900",
-    marginBottom: 4,
+    color: "#F9FAFB",
+    marginBottom: 6,
   },
   completedQuestText: {
-    fontSize: 16,
-    color: "#065F46",
+    fontSize: 15,
     fontWeight: "900",
-    marginBottom: 4,
+    color: "#065F46",
+    marginBottom: 6,
     textDecorationLine: "line-through",
   },
-  questType: {
-    fontSize: 12,
-    color: "#D1D5DB",
+  questMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  questTypeBadge: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  questTypeBadgeText: {
+    fontSize: 11,
     fontWeight: "800",
+    color: "#374151",
     textTransform: "uppercase",
   },
   stepPill: {
     backgroundColor: "#FBBF24",
     borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: "#111827",
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     marginLeft: 10,
   },
   steps: {
     color: "#111827",
     fontWeight: "900",
-    fontSize: 13,
+    fontSize: 12,
   },
   reflectButton: {
     marginTop: 10,
     backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 10,
-    alignItems: "center",
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: "#D1D5DB",
+    paddingVertical: 9,
+    alignItems: "center",
   },
   reflectButtonText: {
     color: "#374151",
-    fontSize: 13,
     fontWeight: "800",
+    fontSize: 13,
   },
+
   summaryCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 6,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: "#E5D39A",
+    padding: 16,
+    marginTop: 6,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: 6,
   },
   rank: {
-    fontSize: 24,
+    fontSize: 21,
     color: "#111827",
     fontWeight: "900",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   smallText: {
     color: "#374151",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   resetButton: {
-    backgroundColor: "#111827",
-    borderRadius: 16,
-    padding: 14,
-    alignItems: "center",
     marginTop: 12,
+    backgroundColor: "#111827",
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: "#FBBF24",
+    paddingVertical: 10,
+    alignItems: "center",
   },
   resetButtonText: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "900",
   },
 });
