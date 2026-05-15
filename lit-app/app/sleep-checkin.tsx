@@ -110,7 +110,7 @@ export default function SleepCheckInScreen() {
             <Text style={styles.modeIcon}>{isRecovery ? "🌙" : "☀️"}</Text>
             <Text style={styles.heroTitle}>Morning Check-In</Text>
             <Text style={styles.heroSubtitle}>
-              {isRecovery ? "Listen before you push." : "Start with intention."}
+              {!hasAllInputs ? "Begin with an honest snapshot." : isRecovery ? "Protect your flame." : "Spend your flame wisely."}
             </Text>
           </View>
 
@@ -120,7 +120,7 @@ export default function SleepCheckInScreen() {
         </View>
 
         <Text style={styles.heroBody}>
-          Luna uses your sleep, mood, and stress to estimate your Energy Yield for today.
+          {!hasAllInputs ? "This is your morning ritual. Enter sleep, mood, and stress when you are ready." : isRecovery ? "Today leans Recovery. Gentle effort counts." : "Today leans Progress. Use your energy with intention."}
         </Text>
       </View>
 
@@ -133,13 +133,13 @@ export default function SleepCheckInScreen() {
       </View>
 
       <View style={styles.inputCard}>
-        <Text style={styles.cardLabel}>Today’s Inputs</Text>
+        <Text style={styles.cardLabel}>Morning Inputs</Text>
 
         <Text style={styles.label}>Hours slept</Text>
         <TextInput
           style={styles.input}
           keyboardType="numeric"
-          placeholder="Enter hours slept"
+          placeholder=""
           placeholderTextColor="#9CA3AF"
           value={hours}
           onChangeText={setHours}
@@ -153,7 +153,7 @@ export default function SleepCheckInScreen() {
         <TextInput
           style={styles.input}
           keyboardType="numeric"
-          placeholder="Enter mood from 1-10"
+          placeholder=""
           placeholderTextColor="#9CA3AF"
           value={mood}
           onChangeText={setMood}
@@ -163,7 +163,7 @@ export default function SleepCheckInScreen() {
         <TextInput
           style={styles.input}
           keyboardType="numeric"
-          placeholder="Enter stress from 1-10"
+          placeholder=""
           placeholderTextColor="#9CA3AF"
           value={stress}
           onChangeText={setStress}
@@ -190,10 +190,10 @@ export default function SleepCheckInScreen() {
         </Text>
         <Text style={styles.meaningText}>
           {!hasAllInputs
-            ? "Enter your sleep, mood, and stress to let Luna estimate whether today fits Recovery or Progress."
+            ? "Recovery and Progress are not grades. They help you choose a fair plan for today."
             : isRecovery
-            ? "Recovery means your best step today is to protect your energy, reduce shame, and still do one honest thing."
-            : "Progress means your energy is available for stronger action toward something that matters to you."}
+            ? "Recovery means protecting energy, lowering pressure, and still taking one honest step."
+            : "Progress means your energy is available for focused action and meaningful momentum."}
         </Text>
       </View>
 
@@ -237,29 +237,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     borderColor: "#F59E0B",
     borderWidth: 3,
-    borderRadius: 34,
+    borderRadius: 30,
     padding: 22,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   recoveryHero: {
     backgroundColor: "#1E1B4B",
     borderColor: "#8B5CF6",
     borderWidth: 3,
-    borderRadius: 34,
+    borderRadius: 30,
     padding: 22,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   heroTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 16,
   },
   modeIcon: {
     fontSize: 40,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "900",
     color: "#FFFFFF",
   },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   heroBody: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
     color: "#FFFFFF",
     fontWeight: "700",
@@ -299,10 +299,10 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   lunaCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFFBEB",
     borderRadius: 24,
     padding: 20,
-    marginBottom: 18,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: "#E5D39A",
   },
@@ -320,11 +320,12 @@ const styles = StyleSheet.create({
   },
   inputCard: {
     backgroundColor: "#FFFFFF",
+    shadowOpacity: 0,
     borderRadius: 24,
     padding: 20,
     borderWidth: 2,
     borderColor: "#E5D39A",
-    marginBottom: 18,
+    marginBottom: 16,
   },
   cardLabel: {
     fontSize: 14,
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   input: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F9FAFB",
     borderRadius: 16,
     padding: 14,
     fontSize: 18,
@@ -359,23 +360,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   progressResultCard: {
-    backgroundColor: "#111827",
+    backgroundColor: "#1F2937",
     borderColor: "#FBBF24",
     borderWidth: 3,
     borderRadius: 28,
     padding: 22,
-    marginBottom: 18,
+    marginBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   recoveryResultCard: {
-    backgroundColor: "#312E81",
+    backgroundColor: "#1E1B4B",
     borderColor: "#A78BFA",
     borderWidth: 3,
     borderRadius: 28,
     padding: 22,
-    marginBottom: 18,
+    marginBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   modeBadge: {
-    backgroundColor: "#374151",
+    backgroundColor: "#0F172A",
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 20,
-    marginBottom: 18,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: "#F59E0B",
   },
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF2FF",
     borderRadius: 24,
     padding: 20,
-    marginBottom: 18,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: "#A78BFA",
   },
@@ -476,12 +477,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   disabledButton: {
-  backgroundColor: "#6B7280",
-  padding: 18,
-  borderRadius: 20,
-  alignItems: "center",
-  borderWidth: 2,
-  borderColor: "#D1D5DB",
-  marginBottom: 12,
+    backgroundColor: "#6B7280",
+    padding: 18,
+    borderRadius: 20,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    marginBottom: 12,
   },
 });

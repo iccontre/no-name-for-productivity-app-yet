@@ -12,6 +12,8 @@ type Quest = {
 
 type UserProfile = {
   name: string;
+  longTermDream?: string;
+  dreamCategory?: string;
   progressMeaning: string;
   goalOne: string;
   goalTwo: string;
@@ -60,6 +62,7 @@ export default function HomeScreen() {
 
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileChecked, setProfileChecked] = useState(false);
   const [latestIntention, setLatestIntention] = useState<PreSleepIntention | null>(null);
 
   useEffect(() => {
@@ -100,7 +103,16 @@ export default function HomeScreen() {
 
   async function loadProfile() {
     const saved = await AsyncStorage.getItem(PROFILE_KEY);
-    if (saved) setProfile(JSON.parse(saved));
+
+    if (!saved) {
+      setProfileChecked(true);
+      router.replace("/onboarding");
+      return;
+    }
+
+    const parsed = JSON.parse(saved) as UserProfile;
+    setProfile(parsed);
+    setProfileChecked(true);
   }
 
   async function loadCompletedQuests() {
@@ -180,75 +192,82 @@ export default function HomeScreen() {
   const thirdGoal = profile?.goalThree?.trim() || "your future";
   const progressMeaning = profile?.progressMeaning?.trim();
 
-  function generateQuests(): Quest[] {
-    if (isRecovery) {
-      return [
-        {
-          title: "Recovery request",
-          type: "Recovery",
-          steps: 1,
-        },
-        {
-          title: `One tiny step toward: ${topGoal}`,
-          type: "Truth",
-          steps: 1,
-        },
-        {
-          title: "Prepare for better sleep tonight",
-          type: "Rest",
-          steps: 1,
-        },
-      ];
-    }
+  function getCategoryQuests(category: string, modeType: "Recovery" | "Progress"): Quest[] {
+    const normalized = category || "Purpose";
 
-    const progressQuests: Quest[] = [
-      {
-        title: "Morning journal",
-        type: "Mind",
-        steps: 1,
+    const map: Record<string, { Recovery: string[]; Progress: string[] }> = {
+      Health: {
+        Progress: ["Do 15 minutes of movement", "Choose one better nutrition action", "Protect your sleep window tonight"],
+        Recovery: ["Stretch for 5 calm minutes", "Choose one easy healthy meal", "Rest and protect sleep tonight"],
       },
-      {
-        title: `Make progress toward: ${topGoal}`,
-        type: "Future",
-        steps: 2,
+      Money: {
+        Progress: ["Research one income opportunity", "Spend 15 minutes building a useful skill", "Track one spending or saving decision"],
+        Recovery: ["Write one small money step for tomorrow", "Review your goal without pressure", "Protect sleep so you can act with more energy"],
       },
-      {
-        title: `Small step for: ${secondGoal}`,
-        type: "Growth",
-        steps: 2,
+      Mind: {
+        Progress: ["Journal one honest page", "Notice one thought pattern today", "Pause before one reaction"],
+        Recovery: ["Write a gentle brain-dump", "Name one feeling without judging it", "Take 3 deep breaths before your next task"],
       },
+      "Friends / Connection": {
+        Progress: ["Send one message to someone", "Start one small conversation", "Plan one social step"],
+        Recovery: ["Reflect on one person you want to reconnect with", "Send a low-pressure message if it feels realistic", "Journal about what makes connection hard"],
+      },
+      "School / Work": {
+        Progress: ["Complete one focus block", "Plan your top assignment early", "Clear one unfinished task"],
+        Recovery: ["Pick one simple work/school priority", "Set up materials for tomorrow", "Rest so your focus can recover"],
+      },
+      Confidence: {
+        Progress: ["Keep one promise to yourself", "Do one uncomfortable but safe action", "Write down one small win"],
+        Recovery: ["Choose one tiny promise you can keep", "Speak kindly to yourself once today", "Reflect on a moment you handled well"],
+      },
+      Creativity: {
+        Progress: ["Work on one creative project", "Capture and save one idea", "Make 20 minutes for creative practice"],
+        Recovery: ["Open your project for 5 minutes", "Collect one inspiration", "Rest so your creativity can recharge"],
+      },
+      Sleep: {
+        Progress: ["Keep a consistent sleep target", "Reduce phone use before bed", "Plan a calm wind-down tonight"],
+        Recovery: ["Take one short rest break", "Use a low-stimulation wind-down", "Protect your bedtime tonight"],
+      },
+      "Phone Use": {
+        Progress: ["Notice one screen-time trigger", "Replace one scroll with a useful action", "Create one phone-free focus block"],
+        Recovery: ["Use one short phone break", "Move distracting apps out of reach", "Journal what pulls you into scrolling"],
+      },
+      Purpose: {
+        Progress: ["Define what progress means today", "Take one honest step daily", "Reflect on what feels meaningful"],
+        Recovery: ["Write one reason your path matters", "Choose one tiny step for tomorrow", "Rest and reconnect with your why"],
+      },
+    };
+
+    const categorySet = map[normalized] ?? map.Purpose;
+    return categorySet[modeType].map((title) => ({ title, type: normalized, steps: 1 }));
+  }
+
+  function generateQuests(): Quest[] {
+    const category = profile?.dreamCategory?.trim() || "Purpose";
+    const questMode: "Recovery" | "Progress" = isRecovery ? "Recovery" : "Progress";
+    const baseQuests = getCategoryQuests(category, questMode);
+
+    const goalQuests: Quest[] = [
+      { title: `Goal step: ${topGoal}`, type: "Goal", steps: 1 },
+      { title: `Goal step: ${secondGoal}`, type: "Goal", steps: 1 },
+      { title: `Goal step: ${thirdGoal}`, type: "Goal", steps: 1 },
     ];
 
-    if (profile?.hasQuietSpace) {
-      progressQuests.push({
-        title: "Complete 1 focus block in your quiet space",
-        type: "Focus",
-        steps: 2,
-      });
-    } else {
-      progressQuests.push({
-        title: "Create a simple focus space where you are",
-        type: "Focus",
-        steps: 2,
-      });
-    }
+    const resourceQuest: Quest = profile?.hasQuietSpace
+      ? { title: "Use your quiet space for one focus block", type: "Focus", steps: 1 }
+      : { title: "Create a simple focus corner for 10 minutes", type: "Focus", steps: 1 };
 
-    if (profile?.hasGymAccess) {
-      progressQuests.push({
-        title: "Movement quest: gym or workout",
-        type: "Body",
-        steps: 2,
-      });
-    } else {
-      progressQuests.push({
-        title: "Movement quest: walk, stretch, or home workout",
-        type: "Body",
-        steps: 2,
-      });
-    }
+    const movementQuest: Quest = profile?.hasGymAccess
+      ? { title: "Movement option: gym or structured workout", type: "Body", steps: 1 }
+      : { title: "Movement option: walk, stretch, or home workout", type: "Body", steps: 1 };
 
-    return progressQuests;
+    const transportQuest: Quest = profile?.hasTransportation
+      ? { title: "Plan one out-of-home step you can reach", type: "Logistics", steps: 1 }
+      : { title: "Plan one step you can do from home", type: "Logistics", steps: 1 };
+
+    return [...baseQuests, ...goalQuests, resourceQuest, movementQuest, transportQuest];
   }
+
 
   const quests = generateQuests();
 
@@ -262,6 +281,10 @@ export default function HomeScreen() {
 
   const flameLabel =
     energyYield >= 75 ? "Bright Flame" : energyYield >= 45 ? "Steady Flame" : "Low Flame";
+
+  if (!profileChecked) {
+    return null;
+  }
 
   return (
     <ScrollView
@@ -300,7 +323,10 @@ export default function HomeScreen() {
           onPress={() => navigateWithHaptic("/sleep-checkin")}
         >
           <Text style={styles.primaryActionIcon}>🔥</Text>
-          <Text style={styles.primaryActionText}>Morning Check-In</Text>
+          <View>
+            <Text style={styles.primaryActionText}>Morning Check-In</Text>
+            <Text style={styles.actionSubTextLight}>Set today's energy</Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -308,7 +334,10 @@ export default function HomeScreen() {
           onPress={() => navigateWithHaptic("/onboarding")}
         >
           <Text style={styles.primaryActionIcon}>🧭</Text>
-          <Text style={styles.goldActionText}>Set My Path</Text>
+          <View>
+            <Text style={styles.goldActionText}>Set My Path</Text>
+            <Text style={styles.actionSubTextDark}>Update your long-term direction</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -322,6 +351,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>📌</Text>
             <Text style={styles.smallActionText}>Tomorrow Queue</Text>
+            <Text style={styles.smallActionSubText}>Plan your next step</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -330,6 +360,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>📊</Text>
             <Text style={styles.smallActionText}>Weekly Summary</Text>
+            <Text style={styles.smallActionSubText}>Review your momentum</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -344,6 +375,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>📓</Text>
             <Text style={styles.smallActionText}>Journal</Text>
+            <Text style={styles.smallActionSubText}>Name what is true</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -352,6 +384,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>🧠</Text>
             <Text style={styles.smallActionText}>Awareness Check</Text>
+            <Text style={styles.smallActionSubText}>Pause before reacting</Text>
           </TouchableOpacity>
         </View>
 
@@ -362,6 +395,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>🌙</Text>
             <Text style={styles.smallActionText}>Pre-Sleep Intention</Text>
+            <Text style={styles.smallActionSubText}>Close your day clearly</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -370,6 +404,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.smallActionIcon}>☀️</Text>
             <Text style={styles.smallActionText}>Morning Reflection</Text>
+            <Text style={styles.smallActionSubText}>Reconnect to last night</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -412,8 +447,8 @@ export default function HomeScreen() {
         </Text>
         <Text style={styles.lunaText}>
           {isRecovery
-            ? `Hey ${displayName}, today is not about proving yourself. Let’s protect your energy and take one honest step toward ${topGoal}.`
-            : `Hey ${displayName}, your energy is available today. Let’s use it on ${topGoal} in a way that fits your real life.`}
+            ? `Hey ${displayName}, Recovery is still progress. Protect your flame and take one honest step toward ${topGoal}.`
+            : `Hey ${displayName}, progress is personal. Spend your energy truthfully on ${topGoal}.`}
         </Text>
       </View>
 
@@ -486,7 +521,7 @@ export default function HomeScreen() {
                 asChild
               >
                 <TouchableOpacity style={styles.reflectButton} onPress={lightHaptic}>
-                  <Text style={styles.reflectButtonText}>Reflect if missed</Text>
+                  <Text style={styles.reflectButtonText}>Reflect if missed — data, not defeat</Text>
                 </TouchableOpacity>
               </Link>
             )}
@@ -558,96 +593,107 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#F9FAFB",
     fontWeight: "800",
-    marginTop: 3,
+    marginTop: 2,
   },
   progressLunaOrb: {
-    height: 86,
-    width: 86,
-    borderRadius: 43,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 3,
+    borderColor: "#F59E0B",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FBBF24",
   },
   recoveryLunaOrb: {
-    height: 86,
-    width: 86,
-    borderRadius: 43,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: "#312E81",
+    borderWidth: 3,
+    borderColor: "#A78BFA",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    backgroundColor: "#312E81",
-    borderColor: "#C4B5FD",
   },
   lunaFace: {
-    fontSize: 42,
+    fontSize: 32,
   },
   brandRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
     justifyContent: "space-between",
+    alignItems: "flex-end",
   },
   logo: {
-    fontSize: 58,
+    fontSize: 52,
     fontWeight: "900",
     color: "#FFFFFF",
-    letterSpacing: -3,
+    letterSpacing: -2,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#F9FAFB",
-    fontWeight: "800",
-    marginTop: -4,
+    marginTop: -6,
+    fontSize: 14,
+    color: "#E5E7EB",
+    fontWeight: "700",
   },
   spark: {
-    fontSize: 38,
+    fontSize: 34,
   },
   actionPanel: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
     borderWidth: 2,
     borderColor: "#E5D39A",
+    padding: 16,
+    marginBottom: 16,
   },
   actionPanelTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "900",
-    color: "#374151",
+    color: "#111827",
     marginBottom: 12,
-    textTransform: "uppercase",
   },
   primaryActionButton: {
     backgroundColor: "#111827",
-    padding: 16,
     borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
+  },
+  goldActionButton: {
+    backgroundColor: "#FDE68A",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderWidth: 2,
-    borderColor: "#FBBF24",
+    borderColor: "#F59E0B",
+    flexDirection: "row",
+    alignItems: "center",
   },
   primaryActionIcon: {
-    fontSize: 24,
-    marginBottom: 5,
+    fontSize: 18,
+    marginRight: 10,
   },
   primaryActionText: {
     color: "#FFFFFF",
-    fontSize: 16,
     fontWeight: "900",
-  },
-  goldActionButton: {
-    backgroundColor: "#FBBF24",
-    padding: 16,
-    borderRadius: 18,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#111827",
+    fontSize: 16,
   },
   goldActionText: {
     color: "#111827",
-    fontSize: 16,
     fontWeight: "900",
+    fontSize: 16,
+  },
+  actionSubTextLight: {
+    color: "#D1D5DB",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  actionSubTextDark: {
+    color: "#374151",
+    fontSize: 12,
+    fontWeight: "700",
   },
   actionGrid: {
     flexDirection: "row",
@@ -658,14 +704,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 10,
   },
-  smallActionButton: {
+  smallActionButtonGold: {
     width: "48%",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#FFFBEB",
     padding: 14,
     borderRadius: 18,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderColor: "#FBBF24",
   },
   smallActionButtonGreen: {
     width: "48%",
@@ -684,15 +730,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#A78BFA",
-  },
-  smallActionButtonGold: {
-  width: "48%",
-  backgroundColor: "#FFFBEB",
-  padding: 14,
-  borderRadius: 18,
-  alignItems: "center",
-  borderWidth: 2,
-  borderColor: "#FBBF24",
   },
   smallActionButtonNight: {
     width: "48%",
@@ -720,6 +757,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
     textAlign: "center",
+  },
+  smallActionSubText: {
+    color: "#4B5563",
+    fontWeight: "700",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 2,
   },
   fullActionText: {
     color: "#111827",
@@ -834,21 +878,20 @@ const styles = StyleSheet.create({
   flameLabel: {
     color: "#F9FAFB",
     fontSize: 15,
-    fontWeight: "900",
-    marginTop: 4,
+    fontWeight: "800",
   },
   energyBadge: {
-    backgroundColor: "#374151",
-    borderRadius: 999,
+    backgroundColor: "#0F172A",
     paddingVertical: 10,
     paddingHorizontal: 14,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: "#FFFFFF",
   },
   energyBadgeText: {
     color: "#FFFFFF",
-    fontWeight: "900",
     fontSize: 13,
+    fontWeight: "900",
   },
   truthCard: {
     backgroundColor: "#FFFFFF",
@@ -856,71 +899,72 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 18,
     borderWidth: 2,
-    borderColor: "#A78BFA",
+    borderColor: "#E5D39A",
   },
   truthLabel: {
     fontSize: 13,
-    fontWeight: "900",
     color: "#6B7280",
-    textTransform: "uppercase",
     marginBottom: 8,
+    textTransform: "uppercase",
+    fontWeight: "900",
   },
   truthText: {
     fontSize: 16,
-    lineHeight: 23,
-    color: "#111827",
-    fontWeight: "800",
+    lineHeight: 24,
+    color: "#374151",
+    fontWeight: "700",
   },
   goalsCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
     padding: 18,
-    marginBottom: 24,
+    marginBottom: 18,
     borderWidth: 2,
     borderColor: "#E5D39A",
   },
   goalText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
     color: "#111827",
-    fontWeight: "800",
-    marginBottom: 4,
+    fontWeight: "900",
+    marginBottom: 6,
   },
   progressSectionTitle: {
     fontSize: 26,
+    color: "#111827",
     fontWeight: "900",
-    marginBottom: 14,
-    color: "#1F2937",
+    marginBottom: 10,
+    marginTop: 2,
   },
   recoverySectionTitle: {
     fontSize: 26,
-    fontWeight: "900",
-    marginBottom: 14,
     color: "#F9FAFB",
+    fontWeight: "900",
+    marginBottom: 10,
+    marginTop: 2,
   },
   progressQuestCard: {
     backgroundColor: "#FFFFFF",
-    borderColor: "#D1D5DB",
-    borderWidth: 2,
     borderRadius: 22,
-    padding: 16,
+    padding: 14,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#E5D39A",
   },
   recoveryQuestCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
+    backgroundColor: "#1E1B4B",
     borderRadius: 22,
-    padding: 16,
+    padding: 14,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#8B5CF6",
   },
   completedQuestCard: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#22C55E",
-    borderWidth: 2,
+    backgroundColor: "#ECFDF5",
     borderRadius: 22,
-    padding: 16,
+    padding: 14,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "#34D399",
   },
   questMain: {
     flexDirection: "row",
@@ -933,83 +977,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   checkbox: {
-    fontSize: 22,
-    marginRight: 12,
+    fontSize: 24,
+    marginRight: 10,
   },
   questTextBlock: {
     flex: 1,
   },
   questTitle: {
-    fontSize: 17,
+    fontSize: 16,
+    color: "#FFFFFF",
     fontWeight: "900",
-    color: "#111827",
+    marginBottom: 4,
   },
   completedQuestText: {
-    fontSize: 17,
+    fontSize: 16,
+    color: "#065F46",
     fontWeight: "900",
+    marginBottom: 4,
     textDecorationLine: "line-through",
-    color: "#166534",
   },
   questType: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginTop: 4,
-    fontWeight: "700",
+    fontSize: 12,
+    color: "#D1D5DB",
+    fontWeight: "800",
+    textTransform: "uppercase",
   },
   stepPill: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#FBBF24",
     borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 11,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "#22C55E",
+    borderColor: "#111827",
+    marginLeft: 10,
   },
   steps: {
-    fontSize: 15,
+    color: "#111827",
     fontWeight: "900",
-    color: "#16A34A",
+    fontSize: 13,
   },
   reflectButton: {
-    backgroundColor: "#F3F4F6",
-    padding: 12,
+    marginTop: 10,
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
+    paddingVertical: 10,
     alignItems: "center",
-    marginTop: 14,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
   },
   reflectButtonText: {
     color: "#374151",
-    fontSize: 14,
-    fontWeight: "900",
+    fontSize: 13,
+    fontWeight: "800",
   },
   summaryCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 26,
+    borderRadius: 24,
     padding: 20,
-    marginTop: 14,
+    marginTop: 6,
     borderWidth: 2,
     borderColor: "#E5D39A",
   },
   rank: {
     fontSize: 24,
-    fontWeight: "900",
     color: "#111827",
+    fontWeight: "900",
+    marginBottom: 8,
   },
   smallText: {
-    fontSize: 16,
-    color: "#6B7280",
-    marginTop: 6,
+    color: "#374151",
+    fontSize: 15,
     fontWeight: "700",
+    marginBottom: 4,
   },
   resetButton: {
-    backgroundColor: "#FEE2E2",
-    padding: 14,
+    backgroundColor: "#111827",
     borderRadius: 16,
+    padding: 14,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: "#FBBF24",
   },
   resetButtonText: {
-    color: "#991B1B",
-    fontSize: 14,
+    color: "#FFFFFF",
+    fontSize: 15,
     fontWeight: "900",
   },
 });
