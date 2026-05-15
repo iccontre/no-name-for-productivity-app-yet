@@ -36,6 +36,8 @@ type PreSleepIntention = {
   createdAt: string;
 };
 
+type ModeState = "Recovery" | "Progress" | "Neutral";
+
 const COMPLETED_QUESTS_KEY = "lit_completed_quests";
 const TODAY_PROGRESS_DATE_KEY = "lit_today_progress_date";
 const PROFILE_KEY = "lit_user_profile";
@@ -53,19 +55,32 @@ export default function HomeScreen() {
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const rawEnergy = Array.isArray(params.energy) ? params.energy[0] : params.energy;
 
-  const hasRouteMode = rawMode === "Recovery" || rawMode === "Progress";
-  const routeEnergyNumber = rawEnergy ? Number(rawEnergy) : NaN;
-  const hasRouteEnergy = !Number.isNaN(routeEnergyNumber);
+  const hasRouteCheckIn =
+    (rawMode === "Recovery" || rawMode === "Progress") &&
+    rawEnergy !== undefined &&
+    rawEnergy !== null &&
+    rawEnergy !== "";
+
+  const routeEnergyNumber = hasRouteCheckIn ? Number(rawEnergy) : NaN;
+  const hasRouteEnergy = hasRouteCheckIn && !Number.isNaN(routeEnergyNumber);
 
   const [savedMode, setSavedMode] = useState<"Recovery" | "Progress">("Recovery");
   const [savedEnergy, setSavedEnergy] = useState(0);
   const [hasSavedCheckIn, setHasSavedCheckIn] = useState(false);
 
-  const mode: "Recovery" | "Progress" = hasRouteMode ? rawMode : savedMode;
-  const energyYield = hasRouteEnergy ? routeEnergyNumber : savedEnergy;
+  const hasEnergyData = hasRouteEnergy || hasSavedCheckIn;
 
-  const hasEnergyData = (hasRouteMode && hasRouteEnergy) || hasSavedCheckIn;
-  const isRecovery = mode === "Recovery";
+  const currentMode: ModeState = hasEnergyData
+    ? rawMode === "Recovery" || rawMode === "Progress"
+      ? rawMode
+      : savedMode
+    : "Neutral";
+
+  const isRecovery = currentMode === "Recovery";
+  const isProgress = currentMode === "Progress";
+  const isNeutral = currentMode === "Neutral";
+
+  const energyYield = hasRouteEnergy ? routeEnergyNumber : savedEnergy;
 
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -80,12 +95,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (hasRouteMode && hasRouteEnergy) {
+    if (hasRouteEnergy && (rawMode === "Recovery" || rawMode === "Progress")) {
       setSavedMode(rawMode);
       setSavedEnergy(routeEnergyNumber);
       setHasSavedCheckIn(true);
     }
-  }, [hasRouteMode, hasRouteEnergy, rawMode, routeEnergyNumber]);
+  }, [hasRouteEnergy, rawMode, routeEnergyNumber]);
 
   async function lightHaptic() {
     try {
@@ -264,6 +279,14 @@ export default function HomeScreen() {
   }
 
   function generateQuests(): Quest[] {
+    if (isNeutral) {
+      return [
+        { title: "Complete Morning Check-In", type: "Start", steps: 1 },
+        { title: "Review your current path", type: "Direction", steps: 1 },
+        { title: "Choose one small action for today", type: "Plan", steps: 1 },
+      ];
+    }
+
     const category = profile?.dreamCategory?.trim() || "Purpose";
     const questMode: "Recovery" | "Progress" = isRecovery ? "Recovery" : "Progress";
     const baseQuests = getCategoryQuests(category, questMode);
@@ -307,10 +330,15 @@ export default function HomeScreen() {
   }, [hasEnergyData, energyYield]);
 
   const heroStatusLine = useMemo(() => {
-    if (!hasEnergyData) return "Start with a Morning Check-In to build today’s plan.";
+    if (isNeutral) return "Morning Check-In needed.";
     if (isRecovery) return "Recovery mode is active.";
     return "Progress mode is active.";
-  }, [hasEnergyData, isRecovery]);
+  }, [isNeutral, isRecovery]);
+
+  const heroInstructionLine = useMemo(() => {
+    if (isNeutral) return "Complete a Morning Check-In to calculate your Energy Reserve.";
+    return "Choose your next move from today’s dashboard.";
+  }, [isNeutral]);
 
   if (!profileChecked) {
     return null;
@@ -318,25 +346,28 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={isRecovery ? styles.recoveryScreen : styles.progressScreen}
+      style={isRecovery ? styles.recoveryScreen : isProgress ? styles.progressScreen : styles.neutralScreen}
       contentContainerStyle={styles.container}
     >
-      <View style={isRecovery ? styles.recoveryHero : styles.progressHero}>
+      <View style={isRecovery ? styles.recoveryHero : isProgress ? styles.progressHero : styles.neutralHero}>
         <View style={styles.heroTopRow}>
           <View style={styles.heroLeft}>
             <Text style={styles.logo}>lit</Text>
-            <Text style={styles.heroModeTitle}>{isRecovery ? "Recovery Route" : "Progress Route"}</Text>
+            <Text style={styles.heroModeTitle}>
+              {isNeutral ? "Start Today" : isRecovery ? "Recovery Route" : "Progress Route"}
+            </Text>
             <Text style={styles.heroStatusLine}>{heroStatusLine}</Text>
+            <Text style={styles.heroInstructionLine}>{heroInstructionLine}</Text>
           </View>
 
-          <View style={isRecovery ? styles.recoveryGuideOrb : styles.progressGuideOrb}>
+          <View style={isRecovery ? styles.recoveryGuideOrb : isProgress ? styles.progressGuideOrb : styles.neutralGuideOrb}>
             <Text style={styles.guideName}>Luna</Text>
             <Text style={styles.guideRole}>Guide Companion</Text>
           </View>
         </View>
       </View>
 
-      <View style={isRecovery ? styles.recoveryEnergyCard : styles.progressEnergyCard}>
+      <View style={isRecovery ? styles.recoveryEnergyCard : isProgress ? styles.progressEnergyCard : styles.neutralEnergyCard}>
         <View style={styles.energyLeft}>
           <Text style={styles.energyLabel}>Energy Reserve</Text>
           <Text style={styles.energyValue}>
@@ -344,29 +375,35 @@ export default function HomeScreen() {
           </Text>
           <Text style={styles.flameLabel}>{flameLabel}</Text>
           <Text style={styles.energyInstruction}>
-            {hasEnergyData
-              ? isRecovery
-                ? "Use your remaining energy carefully."
-                : "Spend your energy on what matters most."
-              : "Complete a Morning Check-In to calculate today’s Energy Reserve."}
+            {isNeutral
+              ? "Complete a Morning Check-In to calculate today’s Energy Reserve."
+              : isRecovery
+              ? "Use your remaining energy carefully."
+              : "Spend your energy on what matters most."}
           </Text>
         </View>
 
         <View style={styles.modeBadge}>
-          <Text style={styles.modeBadgeText}>{isRecovery ? "Recovery" : "Progress"}</Text>
+          <Text style={styles.modeBadgeText}>
+            {isNeutral ? "Not set" : isRecovery ? "Recovery" : "Progress"}
+          </Text>
         </View>
       </View>
 
-      <View style={isRecovery ? styles.recoveryLunaCard : styles.progressLunaCard}>
+      <View style={isRecovery ? styles.recoveryLunaCard : isProgress ? styles.progressLunaCard : styles.neutralLunaCard}>
         <Text style={styles.sectionHeading}>Luna’s Briefing</Text>
         <Text style={styles.instructionText}>
           Luna uses your check-in, goals, and mode to suggest realistic quests.
         </Text>
+
         <Text style={styles.lunaBodyText}>
-          {isRecovery
+          {isNeutral
+            ? "Start with a Morning Check-In so today’s quests can match your sleep, mood, and stress."
+            : isRecovery
             ? "Recovery is still progress. Today’s job is to protect your energy and keep one promise to yourself."
             : "Progress is personal. Today’s job is to spend your energy on the path that matters to you."}
         </Text>
+
         <Text style={styles.mainPathText}>Main path: {topGoal}</Text>
       </View>
 
@@ -391,7 +428,7 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      <View style={isRecovery ? styles.recoveryPathCard : styles.progressPathCard}>
+      <View style={isRecovery ? styles.recoveryPathCard : isProgress ? styles.progressPathCard : styles.neutralPathCard}>
         <Text style={styles.sectionHeading}>Path Map</Text>
         <Text style={styles.instructionText}>Your dream and goals shape today’s quests.</Text>
 
@@ -513,11 +550,11 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.questBoardSection}>
-        <Text style={isRecovery ? styles.questBoardTitleRecovery : styles.questBoardTitleProgress}>
-          Quest Board
-        </Text>
+        <Text style={styles.questBoardTitle}>Quest Board</Text>
         <Text style={styles.questBoardInstruction}>
-          Complete quests for steps. If a quest does not happen, reflect instead of judging yourself.
+          {isNeutral
+            ? "Start with check-in, then choose one small move for the day."
+            : "Complete quests for steps. If a quest does not happen, reflect instead of judging yourself."}
         </Text>
 
         {quests.map((quest, index) => {
@@ -531,7 +568,9 @@ export default function HomeScreen() {
                   ? styles.completedQuestCard
                   : isRecovery
                   ? styles.recoveryQuestCard
-                  : styles.progressQuestCard
+                  : isProgress
+                  ? styles.progressQuestCard
+                  : styles.neutralQuestCard
               }
             >
               <TouchableOpacity style={styles.questMain} onPress={() => toggleQuest(quest.title)}>
@@ -594,6 +633,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0F172A",
   },
+  neutralScreen: {
+    flex: 1,
+    backgroundColor: "#F0FDF4",
+  },
   container: {
     padding: 20,
     paddingTop: 56,
@@ -616,6 +659,14 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
   },
+  neutralHero: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
+    borderWidth: 3,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
+  },
   heroTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -628,22 +679,30 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 42,
     fontWeight: "900",
-    color: "#111827",
+    color: "#14532D",
     letterSpacing: -1,
     marginBottom: 6,
   },
   heroModeTitle: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#111827",
+    color: "#14532D",
     marginBottom: 6,
   },
   heroStatusLine: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#374151",
+    fontWeight: "800",
+    color: "#14532D",
     lineHeight: 20,
+    marginBottom: 4,
   },
+  heroInstructionLine: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#166534",
+    lineHeight: 19,
+  },
+
   progressGuideOrb: {
     width: 112,
     backgroundColor: "#EFF6FF",
@@ -664,16 +723,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: "center",
   },
+  neutralGuideOrb: {
+    width: 112,
+    backgroundColor: "#ECFDF5",
+    borderColor: "#22C55E",
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: "center",
+  },
   guideName: {
     fontSize: 12,
-    color: "#F9FAFB",
+    color: "#14532D",
     fontWeight: "900",
     textTransform: "uppercase",
     marginBottom: 4,
   },
   guideRole: {
     fontSize: 11,
-    color: "#E5E7EB",
+    color: "#166534",
     fontWeight: "700",
     textAlign: "center",
   },
@@ -692,6 +761,17 @@ const styles = StyleSheet.create({
   recoveryEnergyCard: {
     backgroundColor: "#312E81",
     borderColor: "#A78BFA",
+    borderWidth: 3,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  neutralEnergyCard: {
+    backgroundColor: "#14532D",
+    borderColor: "#22C55E",
     borderWidth: 3,
     borderRadius: 22,
     padding: 16,
@@ -759,6 +839,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
   },
+  neutralLunaCard: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
+    borderWidth: 2,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 14,
+  },
 
   nightSignalCard: {
     backgroundColor: "#EEF2FF",
@@ -806,6 +894,14 @@ const styles = StyleSheet.create({
   recoveryPathCard: {
     backgroundColor: "#E0F2FE",
     borderColor: "#818CF8",
+    borderWidth: 2,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 14,
+  },
+  neutralPathCard: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
     borderWidth: 2,
     borderRadius: 20,
     padding: 14,
@@ -962,13 +1058,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
   },
-  questBoardTitleProgress: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#111827",
-    marginBottom: 6,
-  },
-  questBoardTitleRecovery: {
+  questBoardTitle: {
     fontSize: 22,
     fontWeight: "900",
     color: "#111827",
@@ -992,6 +1082,14 @@ const styles = StyleSheet.create({
   recoveryQuestCard: {
     backgroundColor: "#EEF2FF",
     borderColor: "#A78BFA",
+    borderWidth: 2,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+  },
+  neutralQuestCard: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
     borderWidth: 2,
     borderRadius: 16,
     padding: 12,
