@@ -89,17 +89,17 @@ export default function AwarenessCheckScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.heroIcon}>🧠</Text>
-        <Text style={styles.title}>Awareness Check</Text>
+        <Text style={styles.title}>Meditations</Text>
         <Text style={styles.subtitle}>
-          Notice where your attention went today. This is about awareness, not judgment.
+          Practice attention and notice what pulled you away.
         </Text>
       </View>
 
       <View style={styles.lunaCard}>
         <Text style={styles.lunaName}>🌙 Luna</Text>
         <Text style={styles.lunaText}>
-          Some days we move through life automatically. This check-in helps you notice
-          what pulled you away, what brought you back, and when you felt present.
+          This is a short attention check. Write what had your focus, what distracted you,
+          and what helped you come back.
         </Text>
       </View>
 
@@ -108,13 +108,13 @@ export default function AwarenessCheckScreen() {
         <TextInput
           style={styles.textArea}
           multiline
-          placeholder="Example: school, work, my phone, anxiety, friends, a goal, or just getting through the day."
+          placeholder="Example: school, work, my phone, stress, friends, a goal, or just getting through the day."
           placeholderTextColor="#9CA3AF"
           value={attentionFocus}
           onChangeText={setAttentionFocus}
         />
 
-        <Text style={styles.label}>Were you acting automatically or intentionally?</Text>
+        <Text style={styles.label}>Were you moving automatically or with intention?</Text>
 
         <TouchableOpacity
           style={
@@ -169,7 +169,7 @@ export default function AwarenessCheckScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.label}>What pulled you away from your goals?</Text>
+        <Text style={styles.label}>What pulled you away?</Text>
         <TextInput
           style={styles.textArea}
           multiline
@@ -189,7 +189,7 @@ export default function AwarenessCheckScreen() {
           onChangeText={setBroughtBack}
         />
 
-        <Text style={styles.label}>What is one moment where you felt present?</Text>
+        <Text style={styles.label}>When did you feel most present?</Text>
         <TextInput
           style={styles.textArea}
           multiline
@@ -200,16 +200,16 @@ export default function AwarenessCheckScreen() {
         />
 
         <TouchableOpacity style={styles.saveButton} onPress={saveAwarenessCheck}>
-          <Text style={styles.saveButtonText}>Save Awareness Check</Text>
+          <Text style={styles.saveButtonText}>Save Meditation</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Recent Awareness Checks</Text>
+      <Text style={styles.sectionTitle}>Recent Meditations</Text>
 
       {checks.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            No awareness checks yet. Start with one honest observation.
+            No meditations yet. Start with one honest observation.
           </Text>
         </View>
       ) : (
@@ -239,7 +239,7 @@ export default function AwarenessCheckScreen() {
 
       {checks.length > 0 && (
         <TouchableOpacity style={styles.clearButton} onPress={clearChecks}>
-          <Text style={styles.clearButtonText}>Clear Awareness Checks</Text>
+          <Text style={styles.clearButtonText}>Clear Meditations</Text>
         </TouchableOpacity>
       )}
 

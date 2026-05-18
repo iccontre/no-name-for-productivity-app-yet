@@ -5,6 +5,8 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 
 type UserProfile = {
   name: string;
+  longTermDream?: string;
+  dreamCategory?: string;
   progressMeaning: string;
   goalOne: string;
   goalTwo: string;
@@ -22,6 +24,8 @@ const PROFILE_KEY = "lit_user_profile";
 export default function NextChapterScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
+  const [longTermDream, setLongTermDream] = useState("");
+  const [dreamCategory, setDreamCategory] = useState("");
   const [goalOne, setGoalOne] = useState("");
   const [goalTwo, setGoalTwo] = useState("");
   const [goalThree, setGoalThree] = useState("");
@@ -38,6 +42,8 @@ export default function NextChapterScreen() {
     if (saved) {
       const parsed: UserProfile = JSON.parse(saved);
       setProfile(parsed);
+      setLongTermDream(parsed.longTermDream || "");
+      setDreamCategory(parsed.dreamCategory || "");
       setGoalOne(parsed.goalOne || "");
       setGoalTwo(parsed.goalTwo || "");
       setGoalThree(parsed.goalThree || "");
@@ -50,6 +56,8 @@ export default function NextChapterScreen() {
 
     const updatedProfile: UserProfile = {
       ...profile,
+      longTermDream: longTermDream.trim(),
+      dreamCategory: dreamCategory.trim(),
       goalOne: goalOne.trim(),
       goalTwo: goalTwo.trim(),
       goalThree: goalThree.trim(),
@@ -58,28 +66,37 @@ export default function NextChapterScreen() {
 
     await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updatedProfile));
     setProfile(updatedProfile);
-    setChapterNote("");
+    setChapterNote("Saved. Your home quests will now follow this updated direction.");
   }
 
   function setRecoveryExample() {
-    setGoalOne("improve sleep");
+    setDreamCategory("Sleep");
+    setLongTermDream("I want to feel rested enough to show up for my life.");
+    setGoalOne("improve sleep consistency");
     setGoalTwo("journal honestly");
     setGoalThree("take one small step daily");
     setProgressMeaning("Progress means recovering enough to keep going without shame.");
+    setChapterNote("Recovery direction selected. You can edit the path before saving.");
   }
 
   function setConnectionExample() {
-    setGoalOne("make new friends");
-    setGoalTwo("build confidence socially");
-    setGoalThree("reach out to people more often");
+    setDreamCategory("Friends / Connection");
+    setLongTermDream("I want to build real connection and feel more confident around people.");
+    setGoalOne("reach out to one person");
+    setGoalTwo("build social confidence");
+    setGoalThree("create meaningful connections");
     setProgressMeaning("Progress means building connection and feeling less alone.");
+    setChapterNote("Connection direction selected. You can edit the path before saving.");
   }
 
   function setFutureExample() {
-    setGoalOne("make money");
-    setGoalTwo("build a useful skill");
-    setGoalThree("create a project or portfolio");
+    setDreamCategory("Money");
+    setLongTermDream("I want to create more freedom and opportunity for my future.");
+    setGoalOne("build a useful money skill");
+    setGoalTwo("find an income opportunity");
+    setGoalThree("track spending and saving");
     setProgressMeaning("Progress means creating more freedom and opportunity over time.");
+    setChapterNote("Future direction selected. You can edit the path before saving.");
   }
 
   function levelUpCurrentGoals() {
@@ -87,64 +104,84 @@ export default function NextChapterScreen() {
       "Progress means taking a slightly stronger step while still respecting my energy and current life."
     );
     setChapterNote(
-      "Luna suggestion: Keep your current goals, but make the next step slightly more active this week."
+      "Keep your current path, but make the next step slightly more active this week."
     );
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Next Chapter</Text>
+      <Text style={styles.title}>Set Your Next Long-Term Goal</Text>
 
       <View style={styles.lunaCard}>
         <Text style={styles.lunaName}>🌙 Luna</Text>
         <Text style={styles.lunaText}>
-          Your goals are allowed to change. You can start with Recovery, grow into
-          Progress, and choose a new chapter when your life starts feeling different.
+          Your direction can change. Update your long-term goal when your life, energy, or priorities shift.
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Current Path</Text>
+        <Text style={styles.cardLabel}>Current Direction</Text>
+        <Text style={styles.goalText}>Dream: {longTermDream || "No long-term dream set yet"}</Text>
+        <Text style={styles.goalText}>Category: {dreamCategory || "No category set yet"}</Text>
         <Text style={styles.goalText}>1. {goalOne || "No goal yet"}</Text>
         <Text style={styles.goalText}>2. {goalTwo || "No goal yet"}</Text>
         <Text style={styles.goalText}>3. {goalThree || "No goal yet"}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Choose a Chapter Direction</Text>
+        <Text style={styles.cardLabel}>Choose a Direction</Text>
         <Text style={styles.helperText}>
-          These are examples. You can choose one or write your own version below.
+          Pick a starter direction or write your own below. These are only suggestions.
         </Text>
 
         <TouchableOpacity style={styles.chapterButton} onPress={setRecoveryExample}>
-          <Text style={styles.chapterTitle}>Recovery Chapter</Text>
+          <Text style={styles.chapterTitle}>Recovery Direction</Text>
           <Text style={styles.chapterText}>Sleep, journaling, small steps, stability.</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.chapterButton} onPress={setConnectionExample}>
-          <Text style={styles.chapterTitle}>Connection Chapter</Text>
+          <Text style={styles.chapterTitle}>Connection Direction</Text>
           <Text style={styles.chapterText}>Friends, confidence, social growth.</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.chapterButton} onPress={setFutureExample}>
-          <Text style={styles.chapterTitle}>Future Chapter</Text>
+          <Text style={styles.chapterTitle}>Future Direction</Text>
           <Text style={styles.chapterText}>Money, skills, projects, career direction.</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.levelButton} onPress={levelUpCurrentGoals}>
-          <Text style={styles.levelButtonText}>Level Up Current Goals</Text>
+          <Text style={styles.levelButtonText}>Make Current Goals Stronger</Text>
         </TouchableOpacity>
       </View>
 
       {chapterNote ? (
         <View style={styles.noteCard}>
-          <Text style={styles.noteTitle}>Luna’s Suggestion</Text>
+          <Text style={styles.noteTitle}>Update</Text>
           <Text style={styles.noteText}>{chapterNote}</Text>
         </View>
       ) : null}
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Edit Your Next Chapter</Text>
+        <Text style={styles.cardLabel}>Edit Long-Term Goal</Text>
+
+        <Text style={styles.label}>What is your next long-term dream?</Text>
+        <TextInput
+          style={styles.textArea}
+          multiline
+          value={longTermDream}
+          onChangeText={setLongTermDream}
+          placeholder="Example: I want to become financially independent, make friends, or feel healthy again."
+          placeholderTextColor="#9CA3AF"
+        />
+
+        <Text style={styles.label}>Category</Text>
+        <TextInput
+          style={styles.input}
+          value={dreamCategory}
+          onChangeText={setDreamCategory}
+          placeholder="Example: Health, Money, Mind, Sleep, Purpose..."
+          placeholderTextColor="#9CA3AF"
+        />
 
         <Text style={styles.label}>What does progress mean now?</Text>
         <TextInput
@@ -184,15 +221,14 @@ export default function NextChapterScreen() {
         />
 
         <TouchableOpacity style={styles.saveButton} onPress={saveNextChapter}>
-          <Text style={styles.saveButtonText}>Save Next Chapter</Text>
+          <Text style={styles.saveButtonText}>Save Long-Term Goal</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.truthCard}>
         <Text style={styles.truthTitle}>Remember</Text>
         <Text style={styles.truthText}>
-          Leveling up does not mean abandoning who you are. It means choosing a new
-          step because your life, energy, or confidence has changed.
+          Changing your goal does not mean your old path was wrong. It means you are choosing the next direction with more awareness.
         </Text>
       </View>
 

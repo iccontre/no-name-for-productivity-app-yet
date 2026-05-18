@@ -1,3 +1,4 @@
+// app/(tabs)/index.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
@@ -11,6 +12,15 @@ type Quest = {
   description?: string;
 };
 
+type QueueItem = {
+  id?: string;
+  text?: string;
+  title?: string;
+  task?: string;
+  note?: string;
+  type?: string;
+};
+
 type CheckIn = {
   id: string;
   hours: string;
@@ -19,6 +29,16 @@ type CheckIn = {
   energy: number;
   mode: "Recovery" | "Progress";
   createdAt: string;
+};
+
+type DayPlan = {
+  Monday: string;
+  Tuesday: string;
+  Wednesday: string;
+  Thursday: string;
+  Friday: string;
+  Saturday: string;
+  Sunday: string;
 };
 
 type UserProfile = {
@@ -54,9 +74,24 @@ const TODAY_PROGRESS_DATE_KEY = "lit_today_progress_date";
 const PROFILE_KEY = "lit_user_profile";
 const CHECKIN_KEY = "lit_latest_checkin";
 const LATEST_PRE_SLEEP_INTENTION_KEY = "lit_latest_pre_sleep_intention";
+const TOMORROW_QUEUE_KEY = "lit_tomorrow_queue";
+const DAY_PLAN_KEY = "lit_day_plan";
 
 function getTodayKey() {
   return new Date().toLocaleDateString("en-CA");
+}
+
+function getWeekdayName() {
+  const days: Array<keyof DayPlan> = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  return days[new Date().getDay()];
 }
 
 export default function HomeScreen() {
@@ -79,9 +114,18 @@ export default function HomeScreen() {
   const [savedEnergy, setSavedEnergy] = useState(0);
   const [hasSavedCheckIn, setHasSavedCheckIn] = useState(false);
   const [latestCheckIn, setLatestCheckIn] = useState<CheckIn | null>(null);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [dayPlan, setDayPlan] = useState<DayPlan>({
+    Monday: "",
+    Tuesday: "",
+    Wednesday: "",
+    Thursday: "",
+    Friday: "",
+    Saturday: "",
+    Sunday: "",
+  });
 
   const hasEnergyData = hasRouteEnergy || hasSavedCheckIn;
-
   const currentMode: ModeState = hasEnergyData
     ? rawMode === "Recovery" || rawMode === "Progress"
       ? rawMode
@@ -91,7 +135,6 @@ export default function HomeScreen() {
   const isRecovery = currentMode === "Recovery";
   const isProgress = currentMode === "Progress";
   const isNeutral = currentMode === "Neutral";
-
   const energyYield = hasRouteEnergy ? routeEnergyNumber : savedEnergy;
 
   const [completedQuests, setCompletedQuests] = useState<string[]>([]);
@@ -104,6 +147,8 @@ export default function HomeScreen() {
     loadProfile();
     loadLatestCheckIn();
     loadLatestIntention();
+    loadQuickThoughts();
+    loadDayPlan();
   }, []);
 
   useEffect(() => {
@@ -139,21 +184,43 @@ export default function HomeScreen() {
 
   async function loadProfile() {
     const saved = await AsyncStorage.getItem(PROFILE_KEY);
-
     if (!saved) {
       setProfileChecked(true);
       router.replace("/onboarding");
       return;
     }
-
-    const parsed = JSON.parse(saved) as UserProfile;
-    setProfile(parsed);
+    setProfile(JSON.parse(saved));
     setProfileChecked(true);
+  }
+
+  async function loadQuickThoughts() {
+    const saved = await AsyncStorage.getItem(TOMORROW_QUEUE_KEY);
+    if (!saved) {
+      setQueueItems([]);
+      return;
+    }
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) setQueueItems(parsed);
+    else setQueueItems([]);
+  }
+
+  async function loadDayPlan() {
+    const saved = await AsyncStorage.getItem(DAY_PLAN_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    setDayPlan({
+      Monday: parsed.Monday || "",
+      Tuesday: parsed.Tuesday || "",
+      Wednesday: parsed.Wednesday || "",
+      Thursday: parsed.Thursday || "",
+      Friday: parsed.Friday || "",
+      Saturday: parsed.Saturday || "",
+      Sunday: parsed.Sunday || "",
+    });
   }
 
   async function loadCompletedQuests() {
     const today = getTodayKey();
-
     const savedDate = await AsyncStorage.getItem(TODAY_PROGRESS_DATE_KEY);
     const savedQuests = await AsyncStorage.getItem(COMPLETED_QUESTS_KEY);
 
@@ -163,30 +230,22 @@ export default function HomeScreen() {
       await AsyncStorage.setItem(COMPLETED_QUESTS_KEY, JSON.stringify([]));
       return;
     }
-
-    if (savedQuests) {
-      setCompletedQuests(JSON.parse(savedQuests));
-    }
+    if (savedQuests) setCompletedQuests(JSON.parse(savedQuests));
   }
 
   async function loadLatestCheckIn() {
     const saved = await AsyncStorage.getItem(CHECKIN_KEY);
-
     if (!saved) {
       setHasSavedCheckIn(false);
       setLatestCheckIn(null);
       return;
     }
-
     const checkIn = JSON.parse(saved);
-    const validMode = checkIn.mode === "Recovery" || checkIn.mode === "Progress";
-    const validEnergy = typeof checkIn.energy === "number";
-
-    if (validMode && validEnergy) {
+    if ((checkIn.mode === "Recovery" || checkIn.mode === "Progress") && typeof checkIn.energy === "number") {
       setSavedMode(checkIn.mode);
       setSavedEnergy(checkIn.energy);
       setHasSavedCheckIn(true);
-      setLatestCheckIn(checkIn as CheckIn);
+      setLatestCheckIn(checkIn);
     } else {
       setHasSavedCheckIn(false);
       setLatestCheckIn(null);
@@ -195,9 +254,7 @@ export default function HomeScreen() {
 
   async function loadLatestIntention() {
     const saved = await AsyncStorage.getItem(LATEST_PRE_SLEEP_INTENTION_KEY);
-    if (saved) {
-      setLatestIntention(JSON.parse(saved));
-    }
+    if (saved) setLatestIntention(JSON.parse(saved));
   }
 
   async function saveCompletedQuests(nextCompleted: string[]) {
@@ -209,18 +266,14 @@ export default function HomeScreen() {
 
   async function toggleQuest(title: string) {
     const isAlreadyComplete = completedQuests.includes(title);
-
-    const nextCompleted = isAlreadyComplete
+    const next = isAlreadyComplete
       ? completedQuests.filter((item) => item !== title)
       : [...completedQuests, title];
 
-    if (isAlreadyComplete) {
-      await lightHaptic();
-    } else {
-      await successHaptic();
-    }
+    if (isAlreadyComplete) await lightHaptic();
+    else await successHaptic();
 
-    await saveCompletedQuests(nextCompleted);
+    await saveCompletedQuests(next);
   }
 
   async function resetTodayProgress() {
@@ -236,10 +289,10 @@ export default function HomeScreen() {
 
   const hoursSlept = latestCheckIn ? Number(latestCheckIn.hours) : null;
   const shouldSuggestNap =
-    hasEnergyData &&
-    hoursSlept !== null &&
-    !Number.isNaN(hoursSlept) &&
-    hoursSlept < 7;
+    hasEnergyData && hoursSlept !== null && !Number.isNaN(hoursSlept) && hoursSlept < 7;
+
+  const todayName = getWeekdayName();
+  const todayRole = dayPlan[todayName]?.trim();
 
   function getCategoryQuests(category: string, modeType: "Recovery" | "Progress"): Quest[] {
     const normalized = category || "Purpose";
@@ -290,6 +343,27 @@ export default function HomeScreen() {
     return categorySet[modeType].map((title) => ({ title, type: normalized, steps: 1 }));
   }
 
+  function generateQuickThoughtQuests(): Quest[] {
+    const unique = new Set<string>();
+    const result: Quest[] = [];
+
+    queueItems.forEach((item) => {
+      const text =
+        item?.text?.trim() || item?.title?.trim() || item?.task?.trim() || item?.note?.trim();
+      if (!text || unique.has(text)) return;
+      unique.add(text);
+
+      result.push({
+        title: `Quick thought: ${text}`,
+        type: "Quick Thought",
+        steps: 1,
+        description: item?.type ? `Saved from Quick Thoughts (${item.type})` : "Saved from Quick Thoughts",
+      });
+    });
+
+    return result;
+  }
+
   function generateQuests(): Quest[] {
     const napQuest: Quest = {
       title: "Take a recovery nap",
@@ -298,23 +372,35 @@ export default function HomeScreen() {
       description: "Aim for 30–60 minutes if your schedule allows.",
     };
 
+    const dayPlanQuest: Quest | null = todayRole
+      ? {
+          title: `Day plan: ${todayRole}`,
+          type: "Day Plan",
+          steps: 1,
+          description: "Use today’s theme to choose your next move.",
+        }
+      : null;
+
+    const quickThoughtQuests = generateQuickThoughtQuests();
+
     if (isNeutral) {
-      const baseNeutral: Quest[] = [
+      const neutralBase: Quest[] = [
         { title: "Complete Morning Check-In", type: "Start", steps: 1 },
         { title: "Review your current path", type: "Direction", steps: 1 },
         { title: "Choose one small action for today", type: "Plan", steps: 1 },
       ];
 
-      if (shouldSuggestNap) {
-        return [baseNeutral[0], napQuest, baseNeutral[1], baseNeutral[2]];
-      }
+      const withNap = shouldSuggestNap
+        ? [neutralBase[0], napQuest, neutralBase[1], neutralBase[2]]
+        : neutralBase;
 
-      return baseNeutral;
+      const withDayPlan = dayPlanQuest ? [...withNap, dayPlanQuest] : withNap;
+      return [...withDayPlan, ...quickThoughtQuests];
     }
 
     const category = profile?.dreamCategory?.trim() || "Purpose";
-    const questMode: "Recovery" | "Progress" = isRecovery ? "Recovery" : "Progress";
-    const baseQuests = getCategoryQuests(category, questMode);
+    const modeType: "Recovery" | "Progress" = isRecovery ? "Recovery" : "Progress";
+    const categoryQuests = getCategoryQuests(category, modeType);
 
     const goalQuests: Quest[] = [
       { title: `Goal step: ${topGoal}`, type: "Goal", steps: 1 },
@@ -334,24 +420,22 @@ export default function HomeScreen() {
       ? { title: "Plan one out-of-home step you can reach", type: "Logistics", steps: 1 }
       : { title: "Plan one step you can do from home", type: "Logistics", steps: 1 };
 
-    const merged = [...baseQuests, ...goalQuests, resourceQuest, movementQuest, transportQuest];
+    const base = [...categoryQuests, ...goalQuests, resourceQuest, movementQuest, transportQuest];
+    const withNap = shouldSuggestNap ? [napQuest, ...base] : base;
+    const withDayPlan = dayPlanQuest ? [...withNap, dayPlanQuest] : withNap;
 
-    if (shouldSuggestNap) {
-      return [napQuest, ...merged];
-    }
-
-    return merged;
+    return [...withDayPlan, ...quickThoughtQuests];
   }
 
   const quests = generateQuests();
-
   const completedSteps = quests
     .filter((quest) => completedQuests.includes(quest.title))
-    .reduce((total, quest) => total + quest.steps, 0);
+    .reduce((sum, quest) => sum + quest.steps, 0);
 
-  const completedVisibleQuests = quests.filter((quest) =>
-    completedQuests.includes(quest.title)
-  ).length;
+  const completedVisibleQuests = quests.filter((quest) => completedQuests.includes(quest.title)).length;
+
+  const rank =
+    completedSteps >= 10 ? "Pathfinder" : completedSteps >= 5 ? "Builder" : "Beginner";
 
   const flameLabel = useMemo(() => {
     if (!hasEnergyData) return "Check-in needed";
@@ -360,20 +444,7 @@ export default function HomeScreen() {
     return "Low Flame";
   }, [hasEnergyData, energyYield]);
 
-  const heroStatusLine = useMemo(() => {
-    if (isNeutral) return "Morning Check-In needed.";
-    if (isRecovery) return "Recovery mode is active.";
-    return "Progress mode is active.";
-  }, [isNeutral, isRecovery]);
-
-  const heroInstructionLine = useMemo(() => {
-    if (isNeutral) return "Complete a Morning Check-In to calculate your Energy Reserve.";
-    return "Choose your next move from today’s dashboard.";
-  }, [isNeutral]);
-
-  if (!profileChecked) {
-    return null;
-  }
+  if (!profileChecked) return null;
 
   return (
     <ScrollView
@@ -387,10 +458,15 @@ export default function HomeScreen() {
             <Text style={styles.heroModeTitle}>
               {isNeutral ? "Start Today" : isRecovery ? "Recovery Route" : "Progress Route"}
             </Text>
-            <Text style={styles.heroStatusLine}>{heroStatusLine}</Text>
-            <Text style={styles.heroInstructionLine}>{heroInstructionLine}</Text>
+            <Text style={styles.heroStatusLine}>
+              {isNeutral ? "Morning Check-In needed." : isRecovery ? "Recovery mode is active." : "Progress mode is active."}
+            </Text>
+            <Text style={styles.heroInstructionLine}>
+              {isNeutral
+                ? "Complete a Morning Check-In to calculate your Energy Reserve."
+                : "Choose your next move from today’s dashboard."}
+            </Text>
           </View>
-
           <View style={isRecovery ? styles.recoveryGuideOrb : isProgress ? styles.progressGuideOrb : styles.neutralGuideOrb}>
             <Text style={styles.guideName}>Luna</Text>
             <Text style={styles.guideRole}>Guide Companion</Text>
@@ -401,9 +477,7 @@ export default function HomeScreen() {
       <View style={isRecovery ? styles.recoveryEnergyCard : isProgress ? styles.progressEnergyCard : styles.neutralEnergyCard}>
         <View style={styles.energyLeft}>
           <Text style={styles.energyLabel}>Energy Reserve</Text>
-          <Text style={styles.energyValue}>
-            {hasEnergyData ? `🔥 ${energyYield}/100` : "🔥 —/100"}
-          </Text>
+          <Text style={styles.energyValue}>{hasEnergyData ? `🔥 ${energyYield}/100` : "🔥 —/100"}</Text>
           <Text style={styles.flameLabel}>{flameLabel}</Text>
           <Text style={styles.energyInstruction}>
             {isNeutral
@@ -413,11 +487,8 @@ export default function HomeScreen() {
               : "Spend your energy on what matters most."}
           </Text>
         </View>
-
         <View style={styles.modeBadge}>
-          <Text style={styles.modeBadgeText}>
-            {isNeutral ? "Not set" : isRecovery ? "Recovery" : "Progress"}
-          </Text>
+          <Text style={styles.modeBadgeText}>{isNeutral ? "Not set" : isRecovery ? "Recovery" : "Progress"}</Text>
         </View>
       </View>
 
@@ -426,7 +497,6 @@ export default function HomeScreen() {
         <Text style={styles.instructionText}>
           Luna uses your check-in, goals, and mode to suggest realistic quests.
         </Text>
-
         <Text style={styles.lunaBodyText}>
           {isNeutral
             ? "Start with a Morning Check-In so today’s quests can match your sleep, mood, and stress."
@@ -434,7 +504,6 @@ export default function HomeScreen() {
             ? "Recovery is still progress. Today’s job is to protect your energy and keep one promise to yourself."
             : "Progress is personal. Today’s job is to spend your energy on the path that matters to you."}
         </Text>
-
         <Text style={styles.mainPathText}>Main path: {topGoal}</Text>
       </View>
 
@@ -443,65 +512,43 @@ export default function HomeScreen() {
           <Text style={styles.sectionHeading}>Night Signal</Text>
           <Text style={styles.instructionText}>Review the intention you saved before sleep.</Text>
           <Text style={styles.signalText}>{latestIntention.intention}</Text>
-
           {latestIntention.firstSmallAction ? (
-            <Text style={styles.signalActionText}>
-              First small action: {latestIntention.firstSmallAction}
-            </Text>
+            <Text style={styles.signalActionText}>First small action: {latestIntention.firstSmallAction}</Text>
           ) : null}
-
-          <TouchableOpacity
-            style={styles.signalButton}
-            onPress={() => navigateWithHaptic("/morning-intention-reflection")}
-          >
+          <TouchableOpacity style={styles.signalButton} onPress={() => navigateWithHaptic("/morning-intention-reflection")}>
             <Text style={styles.signalButtonText}>Reflect This Morning</Text>
           </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {todayRole ? (
+        <View style={styles.dayPlanTodayCard}>
+          <Text style={styles.sectionHeading}>Today’s Day Plan</Text>
+          <Text style={styles.dayPlanTodayText}>
+            {todayName}: {todayRole}
+          </Text>
+          <Text style={styles.instructionText}>Use this as the theme for today’s quests.</Text>
         </View>
       ) : null}
 
       <View style={isRecovery ? styles.recoveryPathCard : isProgress ? styles.progressPathCard : styles.neutralPathCard}>
         <Text style={styles.sectionHeading}>Path Map</Text>
         <Text style={styles.instructionText}>Your dream and goals shape today’s quests.</Text>
-
-        {dreamCategory ? (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryBadgeText}>Category: {dreamCategory}</Text>
-          </View>
-        ) : null}
-
+        {dreamCategory ? <View style={styles.categoryBadge}><Text style={styles.categoryBadgeText}>Category: {dreamCategory}</Text></View> : null}
         {longTermDream ? <Text style={styles.pathDreamText}>Long-term dream: {longTermDream}</Text> : null}
-
-        <View style={styles.pathStepRow}>
-          <View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>1</Text></View>
-          <Text style={styles.pathStepText}>{topGoal}</Text>
-        </View>
-
-        <View style={styles.pathStepRow}>
-          <View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>2</Text></View>
-          <Text style={styles.pathStepText}>{secondGoal}</Text>
-        </View>
-
-        <View style={styles.pathStepRow}>
-          <View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>3</Text></View>
-          <Text style={styles.pathStepText}>{thirdGoal}</Text>
-        </View>
+        <View style={styles.pathStepRow}><View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>1</Text></View><Text style={styles.pathStepText}>{topGoal}</Text></View>
+        <View style={styles.pathStepRow}><View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>2</Text></View><Text style={styles.pathStepText}>{secondGoal}</Text></View>
+        <View style={styles.pathStepRow}><View style={styles.pathStepNumber}><Text style={styles.pathStepNumberText}>3</Text></View><Text style={styles.pathStepText}>{thirdGoal}</Text></View>
       </View>
 
       <View style={styles.loadoutSectionCard}>
         <Text style={styles.sectionHeading}>Daily Loadout</Text>
         <View style={styles.tileRow}>
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/sleep-checkin")}
-          >
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/sleep-checkin")}>
             <Text style={styles.tileTitle}>Morning Check-In</Text>
             <Text style={styles.tileInstruction}>Enter sleep, mood, and stress to calculate Energy Reserve.</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/onboarding")}
-          >
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/onboarding")}>
             <Text style={styles.tileTitle}>Set My Path</Text>
             <Text style={styles.tileInstruction}>Choose your long-term dream and starting goals.</Text>
           </TouchableOpacity>
@@ -511,72 +558,57 @@ export default function HomeScreen() {
       <View style={styles.planningSectionCard}>
         <Text style={styles.sectionHeading}>Planning</Text>
         <View style={styles.tileRow}>
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/tomorrow-queue")}
-          >
-            <Text style={styles.tileTitle}>Tomorrow Queue</Text>
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/tomorrow-queue")}>
+            <Text style={styles.tileTitle}>Quick Thoughts</Text>
             <Text style={styles.tileInstruction}>Save tasks or ideas you want to remember later.</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/weekly-summary")}
-          >
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/weekly-summary")}>
             <Text style={styles.tileTitle}>Weekly Summary</Text>
             <Text style={styles.tileInstruction}>Review check-ins, quests, journals, and patterns.</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      <View style={styles.mindSleepSectionCard}>
-        <Text style={styles.sectionHeading}>Mind & Sleep</Text>
-
-        <View style={styles.tileRow}>
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/journal")}
-          >
-            <Text style={styles.tileTitle}>Journal</Text>
-            <Text style={styles.tileInstruction}>Write reflections and track thought patterns.</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/awareness-check")}
-          >
-            <Text style={styles.tileTitle}>Awareness Check</Text>
-            <Text style={styles.tileInstruction}>Notice where your attention went today.</Text>
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.tileRowSecond}>
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/pre-sleep-intention")}
-          >
+          <TouchableOpacity style={styles.tileCardFull} onPress={() => navigateWithHaptic("/day-plan")}>
+            <Text style={styles.tileTitle}>Day Plan</Text>
+            <Text style={styles.tileInstruction}>Set what each day is mainly for.</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.mindSectionCard}>
+        <Text style={styles.sectionHeading}>Mind</Text>
+        <View style={styles.tileRow}>
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/journal")}>
+            <Text style={styles.tileTitle}>Journal</Text>
+            <Text style={styles.tileInstruction}>Write what is true and notice thought patterns.</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/awareness-check")}>
+            <Text style={styles.tileTitle}>Meditations</Text>
+            <Text style={styles.tileInstruction}>Pause and notice where your attention went.</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.sleepSectionCard}>
+        <Text style={styles.sectionHeading}>Sleep</Text>
+        <View style={styles.tileRow}>
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/pre-sleep-intention")}>
             <Text style={styles.tileTitle}>Pre-Sleep Intention</Text>
             <Text style={styles.tileInstruction}>Set one clear intention before bed.</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tileCard}
-            onPress={() => navigateWithHaptic("/morning-intention-reflection")}
-          >
+          <TouchableOpacity style={styles.tileCard} onPress={() => navigateWithHaptic("/morning-intention-reflection")}>
             <Text style={styles.tileTitle}>Morning Reflection</Text>
-            <Text style={styles.tileInstruction}>Reflect on last night’s intention and choose a small action.</Text>
+            <Text style={styles.tileInstruction}>Check what carried into the morning.</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.growthSectionCard}>
         <Text style={styles.sectionHeading}>Growth</Text>
-        <TouchableOpacity
-          style={styles.tileCardFull}
-          onPress={() => navigateWithHaptic("/next-chapter")}
-        >
-          <Text style={styles.tileTitle}>Next Chapter</Text>
-          <Text style={styles.tileInstruction}>Update your goals when your direction changes.</Text>
+        <TouchableOpacity style={styles.tileCardFull} onPress={() => navigateWithHaptic("/next-chapter")}>
+          <Text style={styles.tileTitle}>Set Your Next Long-Term Goal</Text>
+          <Text style={styles.tileInstruction}>Update your direction when your goals change.</Text>
         </TouchableOpacity>
       </View>
 
@@ -590,7 +622,6 @@ export default function HomeScreen() {
 
         {quests.map((quest, index) => {
           const isComplete = completedQuests.includes(quest.title);
-
           return (
             <View
               key={index}
@@ -609,28 +640,15 @@ export default function HomeScreen() {
                   <Text style={styles.checkbox}>{isComplete ? "✅" : "⬜"}</Text>
                   <View style={styles.questTextBlock}>
                     <Text style={styles.questTitle}>{quest.title}</Text>
-                    {quest.description ? (
-                      <Text style={styles.questDescription}>{quest.description}</Text>
-                    ) : null}
-                    <View style={styles.questTypeBadge}>
-                      <Text style={styles.questTypeText}>{quest.type}</Text>
-                    </View>
+                    {quest.description ? <Text style={styles.questDescription}>{quest.description}</Text> : null}
+                    <View style={styles.questTypeBadge}><Text style={styles.questTypeText}>{quest.type}</Text></View>
                   </View>
                 </View>
-
-                <View style={styles.stepRewardPill}>
-                  <Text style={styles.stepRewardText}>+{quest.steps} steps</Text>
-                </View>
+                <View style={styles.stepRewardPill}><Text style={styles.stepRewardText}>+{quest.steps} steps</Text></View>
               </TouchableOpacity>
 
               {!isComplete && (
-                <Link
-                  href={{
-                    pathname: "/reflection",
-                    params: { quest: quest.title },
-                  }}
-                  asChild
-                >
+                <Link href={{ pathname: "/reflection", params: { quest: quest.title } }} asChild>
                   <TouchableOpacity style={styles.reflectButton} onPress={lightHaptic}>
                     <Text style={styles.reflectButtonText}>Missed? Reflect</Text>
                   </TouchableOpacity>
@@ -644,12 +662,9 @@ export default function HomeScreen() {
       <View style={styles.rankPanelCard}>
         <Text style={styles.sectionHeading}>Rank & Steps</Text>
         <Text style={styles.instructionText}>Steps track completed daily actions, not perfection.</Text>
-        <Text style={styles.rankText}>Rank: {completedSteps >= 5 ? "Builder" : "Wanderer"}</Text>
+        <Text style={styles.rankText}>Rank: {rank}</Text>
         <Text style={styles.rankMetaText}>Steps earned today: {completedSteps}</Text>
-        <Text style={styles.rankMetaText}>
-          Completed quests: {completedVisibleQuests}/{quests.length}
-        </Text>
-
+        <Text style={styles.rankMetaText}>Completed quests: {completedVisibleQuests}/{quests.length}</Text>
         <TouchableOpacity style={styles.resetButton} onPress={resetTodayProgress}>
           <Text style={styles.resetButtonText}>Reset Today Plan</Text>
         </TouchableOpacity>
@@ -659,590 +674,103 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  progressScreen: {
-    flex: 1,
-    backgroundColor: "#FFF7ED",
-  },
-  recoveryScreen: {
-    flex: 1,
-    backgroundColor: "#0F172A",
-  },
-  neutralScreen: {
-    flex: 1,
-    backgroundColor: "#F0FDF4",
-  },
-  container: {
-    padding: 20,
-    paddingTop: 56,
-    paddingBottom: 40,
-  },
+  progressScreen: { flex: 1, backgroundColor: "#FFF7ED" },
+  recoveryScreen: { flex: 1, backgroundColor: "#0F172A" },
+  neutralScreen: { flex: 1, backgroundColor: "#F0FDF4" },
+  container: { padding: 20, paddingTop: 56, paddingBottom: 40 },
 
-  progressHero: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#F59E0B",
-    borderWidth: 3,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-  },
-  recoveryHero: {
-    backgroundColor: "#1E1B4B",
-    borderColor: "#8B5CF6",
-    borderWidth: 3,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-  },
-  neutralHero: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#22C55E",
-    borderWidth: 3,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  heroLeft: {
-    flex: 1,
-    marginRight: 10,
-  },
-  logo: {
-    fontSize: 42,
-    fontWeight: "900",
-    color: "#14532D",
-    letterSpacing: -1,
-    marginBottom: 6,
-  },
-  heroModeTitle: {
-    fontSize: 26,
-    fontWeight: "900",
-    color: "#14532D",
-    marginBottom: 6,
-  },
-  heroStatusLine: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#14532D",
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  heroInstructionLine: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#166534",
-    lineHeight: 19,
-  },
+  progressHero: { backgroundColor: "#FFF7ED", borderColor: "#F59E0B", borderWidth: 3, borderRadius: 24, padding: 16, marginBottom: 14 },
+  recoveryHero: { backgroundColor: "#1E1B4B", borderColor: "#8B5CF6", borderWidth: 3, borderRadius: 24, padding: 16, marginBottom: 14 },
+  neutralHero: { backgroundColor: "#DCFCE7", borderColor: "#22C55E", borderWidth: 3, borderRadius: 24, padding: 16, marginBottom: 14 },
+  heroTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  heroLeft: { flex: 1, marginRight: 10 },
+  logo: { fontSize: 42, fontWeight: "900", color: "#14532D", letterSpacing: -1, marginBottom: 6 },
+  heroModeTitle: { fontSize: 26, fontWeight: "900", color: "#14532D", marginBottom: 6 },
+  heroStatusLine: { fontSize: 14, fontWeight: "800", color: "#14532D", lineHeight: 20, marginBottom: 4 },
+  heroInstructionLine: { fontSize: 13, fontWeight: "700", color: "#166534", lineHeight: 19 },
 
-  progressGuideOrb: {
-    width: 112,
-    backgroundColor: "#EFF6FF",
-    borderColor: "#60A5FA",
-    borderWidth: 2,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: "center",
-  },
-  recoveryGuideOrb: {
-    width: 112,
-    backgroundColor: "#312E81",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: "center",
-  },
-  neutralGuideOrb: {
-    width: 112,
-    backgroundColor: "#ECFDF5",
-    borderColor: "#22C55E",
-    borderWidth: 2,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: "center",
-  },
-  guideName: {
-    fontSize: 12,
-    color: "#14532D",
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  guideRole: {
-    fontSize: 11,
-    color: "#166534",
-    fontWeight: "700",
-    textAlign: "center",
-  },
+  progressGuideOrb: { width: 112, backgroundColor: "#EFF6FF", borderColor: "#60A5FA", borderWidth: 2, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 8, alignItems: "center" },
+  recoveryGuideOrb: { width: 112, backgroundColor: "#312E81", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 8, alignItems: "center" },
+  neutralGuideOrb: { width: 112, backgroundColor: "#ECFDF5", borderColor: "#22C55E", borderWidth: 2, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 8, alignItems: "center" },
+  guideName: { fontSize: 12, color: "#14532D", fontWeight: "900", textTransform: "uppercase", marginBottom: 4 },
+  guideRole: { fontSize: 11, color: "#166534", fontWeight: "700", textAlign: "center" },
 
-  progressEnergyCard: {
-    backgroundColor: "#111827",
-    borderColor: "#FBBF24",
-    borderWidth: 3,
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 14,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  recoveryEnergyCard: {
-    backgroundColor: "#312E81",
-    borderColor: "#A78BFA",
-    borderWidth: 3,
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 14,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  neutralEnergyCard: {
-    backgroundColor: "#14532D",
-    borderColor: "#22C55E",
-    borderWidth: 3,
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 14,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  energyLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  energyLabel: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#D1D5DB",
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
-  energyValue: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: "#FBBF24",
-  },
-  flameLabel: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#F9FAFB",
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  energyInstruction: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#E5E7EB",
-    lineHeight: 19,
-  },
-  modeBadge: {
-    backgroundColor: "#0F172A",
-    borderColor: "#FFFFFF",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  modeBadgeText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#FFFFFF",
-  },
+  progressEnergyCard: { backgroundColor: "#111827", borderColor: "#FBBF24", borderWidth: 3, borderRadius: 22, padding: 16, marginBottom: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  recoveryEnergyCard: { backgroundColor: "#312E81", borderColor: "#A78BFA", borderWidth: 3, borderRadius: 22, padding: 16, marginBottom: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  neutralEnergyCard: { backgroundColor: "#14532D", borderColor: "#22C55E", borderWidth: 3, borderRadius: 22, padding: 16, marginBottom: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  energyLeft: { flex: 1, marginRight: 12 },
+  energyLabel: { fontSize: 12, fontWeight: "900", color: "#D1D5DB", textTransform: "uppercase", marginBottom: 6 },
+  energyValue: { fontSize: 34, fontWeight: "900", color: "#FBBF24" },
+  flameLabel: { fontSize: 14, fontWeight: "800", color: "#F9FAFB", marginTop: 2, marginBottom: 6 },
+  energyInstruction: { fontSize: 13, fontWeight: "700", color: "#E5E7EB", lineHeight: 19 },
+  modeBadge: { backgroundColor: "#0F172A", borderColor: "#FFFFFF", borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12 },
+  modeBadgeText: { fontSize: 12, fontWeight: "900", color: "#FFFFFF" },
 
-  progressLunaCard: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#60A5FA",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  recoveryLunaCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  neutralLunaCard: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#22C55E",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
+  progressLunaCard: { backgroundColor: "#EFF6FF", borderColor: "#60A5FA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  recoveryLunaCard: { backgroundColor: "#EEF2FF", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  neutralLunaCard: { backgroundColor: "#DCFCE7", borderColor: "#22C55E", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
 
-  nightSignalCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  signalText: {
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "800",
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  signalActionText: {
-    fontSize: 14,
-    color: "#374151",
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  signalButton: {
-    backgroundColor: "#312E81",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  signalButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-  },
+  dayPlanTodayCard: { backgroundColor: "#E0F2FE", borderColor: "#38BDF8", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  dayPlanTodayText: { fontSize: 15, color: "#111827", fontWeight: "800", marginBottom: 6 },
 
-  progressPathCard: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#F59E0B",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  recoveryPathCard: {
-    backgroundColor: "#E0F2FE",
-    borderColor: "#818CF8",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  neutralPathCard: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#22C55E",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  categoryBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#111827",
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginBottom: 8,
-  },
-  categoryBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  pathDreamText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#374151",
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  pathStepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  pathStepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#111827",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  pathStepNumberText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  pathStepText: {
-    flex: 1,
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "800",
-  },
+  nightSignalCard: { backgroundColor: "#EEF2FF", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  signalText: { fontSize: 15, color: "#111827", fontWeight: "800", lineHeight: 22, marginBottom: 8 },
+  signalActionText: { fontSize: 14, color: "#374151", fontWeight: "700", marginBottom: 12 },
+  signalButton: { backgroundColor: "#312E81", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
+  signalButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
 
-  loadoutSectionCard: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#FBBF24",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  planningSectionCard: {
-    backgroundColor: "#ECFDF5",
-    borderColor: "#22C55E",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  mindSleepSectionCard: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#60A5FA",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  growthSectionCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
+  progressPathCard: { backgroundColor: "#FFF7ED", borderColor: "#F59E0B", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  recoveryPathCard: { backgroundColor: "#E0F2FE", borderColor: "#818CF8", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  neutralPathCard: { backgroundColor: "#DCFCE7", borderColor: "#22C55E", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  categoryBadge: { alignSelf: "flex-start", backgroundColor: "#111827", borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, marginBottom: 8 },
+  categoryBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  pathDreamText: { fontSize: 14, fontWeight: "700", color: "#374151", marginBottom: 8, lineHeight: 20 },
+  pathStepRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
+  pathStepNumber: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#111827", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  pathStepNumberText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
+  pathStepText: { flex: 1, fontSize: 15, color: "#111827", fontWeight: "800" },
 
-  tileRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  tileRowSecond: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  tileCard: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
-    borderColor: "#D1D5DB",
-    borderWidth: 2,
-    borderRadius: 14,
-    padding: 12,
-    minHeight: 110,
-  },
-  tileCardFull: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#D1D5DB",
-    borderWidth: 2,
-    borderRadius: 14,
-    padding: 12,
-  },
-  tileTitle: {
-    fontSize: 14,
-    color: "#111827",
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  tileInstruction: {
-    fontSize: 12,
-    color: "#374151",
-    fontWeight: "700",
-    lineHeight: 18,
-  },
+  loadoutSectionCard: { backgroundColor: "#FFF7ED", borderColor: "#FBBF24", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  planningSectionCard: { backgroundColor: "#ECFDF5", borderColor: "#22C55E", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  mindSectionCard: { backgroundColor: "#EFF6FF", borderColor: "#60A5FA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  sleepSectionCard: { backgroundColor: "#EEF2FF", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  growthSectionCard: { backgroundColor: "#EEF2FF", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
 
-  sectionHeading: {
-    fontSize: 19,
-    fontWeight: "900",
-    color: "#111827",
-    marginBottom: 6,
-  },
-  instructionText: {
-    fontSize: 13,
-    color: "#374151",
-    fontWeight: "700",
-    lineHeight: 19,
-    marginBottom: 8,
-  },
-  lunaBodyText: {
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "700",
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  mainPathText: {
-    fontSize: 14,
-    color: "#111827",
-    fontWeight: "800",
-  },
+  tileRow: { flexDirection: "row", justifyContent: "space-between" },
+  tileRowSecond: { marginTop: 10 },
+  tileCard: { width: "48%", backgroundColor: "#FFFFFF", borderColor: "#D1D5DB", borderWidth: 2, borderRadius: 14, padding: 12, minHeight: 110 },
+  tileCardFull: { width: "100%", backgroundColor: "#FFFFFF", borderColor: "#D1D5DB", borderWidth: 2, borderRadius: 14, padding: 12 },
+  tileTitle: { fontSize: 14, color: "#111827", fontWeight: "900", marginBottom: 4 },
+  tileInstruction: { fontSize: 12, color: "#374151", fontWeight: "700", lineHeight: 18 },
 
-  questBoardSection: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#F59E0B",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
-  },
-  questBoardTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#111827",
-    marginBottom: 6,
-  },
-  questBoardInstruction: {
-    fontSize: 13,
-    color: "#374151",
-    fontWeight: "700",
-    lineHeight: 19,
-    marginBottom: 10,
-  },
-  progressQuestCard: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E5D39A",
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  recoveryQuestCard: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A78BFA",
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  neutralQuestCard: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#22C55E",
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  completedQuestCard: {
-    backgroundColor: "#ECFDF5",
-    borderColor: "#34D399",
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  questMain: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  questLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  checkbox: {
-    fontSize: 22,
-    marginRight: 10,
-  },
-  questTextBlock: {
-    flex: 1,
-  },
-  questTitle: {
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  questDescription: {
-    fontSize: 12,
-    color: "#374151",
-    fontWeight: "700",
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  questTypeBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F3F4F6",
-    borderColor: "#9CA3AF",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  questTypeText: {
-    fontSize: 11,
-    color: "#111827",
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  stepRewardPill: {
-    marginLeft: 10,
-    backgroundColor: "#FBBF24",
-    borderColor: "#111827",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-  },
-  stepRewardText: {
-    color: "#111827",
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  reflectButton: {
-    marginTop: 10,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#9CA3AF",
-    borderWidth: 2,
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  reflectButtonText: {
-    fontSize: 13,
-    color: "#111827",
-    fontWeight: "800",
-  },
+  sectionHeading: { fontSize: 19, fontWeight: "900", color: "#111827", marginBottom: 6 },
+  instructionText: { fontSize: 13, color: "#374151", fontWeight: "700", lineHeight: 19, marginBottom: 8 },
+  lunaBodyText: { fontSize: 15, color: "#111827", fontWeight: "700", lineHeight: 22, marginBottom: 8 },
+  mainPathText: { fontSize: 14, color: "#111827", fontWeight: "800" },
 
-  rankPanelCard: {
-    backgroundColor: "#ECFDF5",
-    borderColor: "#F59E0B",
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 6,
-  },
-  rankText: {
-    fontSize: 20,
-    color: "#111827",
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  rankMetaText: {
-    fontSize: 14,
-    color: "#374151",
-    fontWeight: "700",
-    marginBottom: 3,
-  },
-  resetButton: {
-    marginTop: 12,
-    backgroundColor: "#111827",
-    borderColor: "#FBBF24",
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  resetButtonText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontWeight: "900",
-  },
+  questBoardSection: { backgroundColor: "#FFF7ED", borderColor: "#F59E0B", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 14 },
+  questBoardTitle: { fontSize: 22, fontWeight: "900", color: "#111827", marginBottom: 6 },
+  questBoardInstruction: { fontSize: 13, color: "#374151", fontWeight: "700", lineHeight: 19, marginBottom: 10 },
+  progressQuestCard: { backgroundColor: "#FFFFFF", borderColor: "#E5D39A", borderWidth: 2, borderRadius: 16, padding: 12, marginBottom: 10 },
+  recoveryQuestCard: { backgroundColor: "#EEF2FF", borderColor: "#A78BFA", borderWidth: 2, borderRadius: 16, padding: 12, marginBottom: 10 },
+  neutralQuestCard: { backgroundColor: "#DCFCE7", borderColor: "#22C55E", borderWidth: 2, borderRadius: 16, padding: 12, marginBottom: 10 },
+  completedQuestCard: { backgroundColor: "#ECFDF5", borderColor: "#34D399", borderWidth: 2, borderRadius: 16, padding: 12, marginBottom: 10 },
+  questMain: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  questLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  checkbox: { fontSize: 22, marginRight: 10 },
+  questTextBlock: { flex: 1 },
+  questTitle: { fontSize: 15, color: "#111827", fontWeight: "900", marginBottom: 4 },
+  questDescription: { fontSize: 12, color: "#374151", fontWeight: "700", lineHeight: 18, marginBottom: 6 },
+  questTypeBadge: { alignSelf: "flex-start", backgroundColor: "#F3F4F6", borderColor: "#9CA3AF", borderWidth: 1, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 8 },
+  questTypeText: { fontSize: 11, color: "#111827", fontWeight: "800", textTransform: "uppercase" },
+  stepRewardPill: { marginLeft: 10, backgroundColor: "#FBBF24", borderColor: "#111827", borderWidth: 1, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 10 },
+  stepRewardText: { color: "#111827", fontSize: 11, fontWeight: "900" },
+  reflectButton: { marginTop: 10, backgroundColor: "#FFFFFF", borderColor: "#9CA3AF", borderWidth: 2, borderRadius: 10, paddingVertical: 8, alignItems: "center" },
+  reflectButtonText: { fontSize: 13, color: "#111827", fontWeight: "800" },
+
+  rankPanelCard: { backgroundColor: "#ECFDF5", borderColor: "#F59E0B", borderWidth: 2, borderRadius: 20, padding: 14, marginBottom: 6 },
+  rankText: { fontSize: 20, color: "#111827", fontWeight: "900", marginBottom: 6 },
+  rankMetaText: { fontSize: 14, color: "#374151", fontWeight: "700", marginBottom: 3 },
+  resetButton: { marginTop: 12, backgroundColor: "#111827", borderColor: "#FBBF24", borderWidth: 2, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
+  resetButtonText: { fontSize: 14, color: "#FFFFFF", fontWeight: "900" },
 });

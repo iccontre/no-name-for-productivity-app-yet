@@ -20,7 +20,7 @@ const STORAGE_KEY = "lit_journal_entries";
 
 export default function JournalScreen() {
   const [entryType, setEntryType] = useState<"Morning" | "Evening">("Morning");
-  const [mood, setMood] = useState("7");
+  const [mood, setMood] = useState("");
   const [content, setContent] = useState("");
   const [gratitude, setGratitude] = useState("");
 
@@ -30,6 +30,8 @@ export default function JournalScreen() {
   const [mindLesson, setMindLesson] = useState("");
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+
+  const isMorning = entryType === "Morning";
 
   useEffect(() => {
     loadEntries();
@@ -49,7 +51,7 @@ export default function JournalScreen() {
   }
 
   async function saveJournalEntry() {
-    const hasMainJournal = content.trim() || gratitude.trim();
+    const hasMainJournal = content.trim() || gratitude.trim() || mood.trim();
     const hasMetacognition =
       thoughtPattern.trim() || honestReframe.trim() || mindLesson.trim();
 
@@ -58,7 +60,7 @@ export default function JournalScreen() {
     const newEntry: JournalEntry = {
       id: String(Date.now()),
       type: entryType,
-      mood,
+      mood: mood.trim(),
       content: content.trim(),
       gratitude: gratitude.trim(),
       thoughtPattern: thoughtPattern.trim(),
@@ -73,7 +75,7 @@ export default function JournalScreen() {
 
     setContent("");
     setGratitude("");
-    setMood("7");
+    setMood("");
     setThoughtPattern("");
     setThoughtImpact("Neutral");
     setHonestReframe("");
@@ -91,8 +93,7 @@ export default function JournalScreen() {
       <View style={styles.lunaCard}>
         <Text style={styles.lunaName}>🌙 Luna</Text>
         <Text style={styles.lunaText}>
-          This is your space to be honest. You do not need the perfect words — just tell the truth
-          about where you are today.
+          Use this space to slow down and write what is actually happening. It does not need to sound perfect.
         </Text>
       </View>
 
@@ -119,36 +120,38 @@ export default function JournalScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>Mood (1-10)</Text>
+        <Text style={styles.label}>Mood, 1-10</Text>
         <TextInput
           style={styles.input}
           keyboardType="numeric"
+          placeholder="Enter your mood"
+          placeholderTextColor="#9CA3AF"
           value={mood}
           onChangeText={setMood}
         />
 
         <Text style={styles.label}>
-          {entryType === "Morning"
-            ? "What feels true about today?"
-            : "What did today teach you?"}
+          {isMorning ? "What are you carrying into this morning?" : "What stayed with you this evening?"}
         </Text>
         <TextInput
           style={styles.textArea}
           multiline
           placeholder={
-            entryType === "Morning"
-              ? "Example: I feel tired, but I still want to take one small step."
-              : "Example: I learned that I need to make my goals smaller on low-energy days."
+            isMorning
+              ? "Example: I woke up tired, but I want to start with one small thing."
+              : "Example: I got distracted, but I noticed what pulled me away."
           }
           placeholderTextColor="#9CA3AF"
           value={content}
           onChangeText={setContent}
         />
 
-        <Text style={styles.label}>One thing you are grateful for</Text>
+        <Text style={styles.label}>
+          {isMorning ? "One thing you can appreciate this morning" : "One thing you can appreciate from today"}
+        </Text>
         <TextInput
           style={styles.input}
-          placeholder="Example: I got through the day."
+          placeholder={isMorning ? "Example: I got another chance to try." : "Example: I made it through the day."}
           placeholderTextColor="#9CA3AF"
           value={gratitude}
           onChangeText={setGratitude}
@@ -158,20 +161,26 @@ export default function JournalScreen() {
       <View style={styles.metaCard}>
         <Text style={styles.metaTitle}>Metacognitive Check-In</Text>
         <Text style={styles.metaSubtitle}>
-          Notice how your mind worked today. This helps you understand your thoughts instead of being controlled by them.
+          Notice the pattern behind your thoughts. The goal is not to judge the thought. The goal is to see it clearly.
         </Text>
 
-        <Text style={styles.label}>What thought pattern showed up today?</Text>
+        <Text style={styles.label}>
+          {isMorning ? "What thought pattern showed up this morning?" : "What thought pattern showed up this evening?"}
+        </Text>
         <TextInput
           style={styles.textArea}
           multiline
-          placeholder="Example: overthinking, avoidance, comparison, self-doubt, clarity, motivation..."
+          placeholder={
+            isMorning
+              ? "Example: overthinking, avoidance, comparison, self-doubt, focus, calm..."
+              : "Example: replaying the day, regret, motivation, clarity, stress, relief..."
+          }
           placeholderTextColor="#9CA3AF"
           value={thoughtPattern}
           onChangeText={setThoughtPattern}
         />
 
-        <Text style={styles.label}>Was this thought helpful, harmful, or neutral?</Text>
+        <Text style={styles.label}>Did this thought help, hurt, or just pass through?</Text>
 
         <View style={styles.impactRow}>
           <TouchableOpacity
@@ -202,21 +211,29 @@ export default function JournalScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>What is a more honest way to look at it?</Text>
+        <Text style={styles.label}>What is the more honest version of the thought?</Text>
         <TextInput
           style={styles.textArea}
           multiline
-          placeholder="Example: I am not lazy. I was tired and needed a smaller first step."
+          placeholder="Example: I am not lazy. I was tired, and the task needed to be smaller."
           placeholderTextColor="#9CA3AF"
           value={honestReframe}
           onChangeText={setHonestReframe}
         />
 
-        <Text style={styles.label}>What did you learn about how your mind worked today?</Text>
+        <Text style={styles.label}>
+          {isMorning
+            ? "What does this tell you about how your mind is starting the day?"
+            : "What did you learn about how your mind handled the day?"}
+        </Text>
         <TextInput
           style={styles.textArea}
           multiline
-          placeholder="Example: I avoid tasks when they feel too big, but I can start when I make them smaller."
+          placeholder={
+            isMorning
+              ? "Example: I need a simple first step before my mind starts avoiding."
+              : "Example: I lose direction when the task feels too big, but I come back when I write it down."
+          }
           placeholderTextColor="#9CA3AF"
           value={mindLesson}
           onChangeText={setMindLesson}
@@ -240,12 +257,12 @@ export default function JournalScreen() {
           <View key={entry.id} style={styles.entryCard}>
             <Text style={styles.entryType}>{entry.type} Entry</Text>
             <Text style={styles.entryDate}>{entry.createdAt}</Text>
-            <Text style={styles.entryMood}>Mood: {entry.mood}/10</Text>
+            <Text style={styles.entryMood}>Mood: {entry.mood ? `${entry.mood}/10` : "Not entered"}</Text>
 
             {entry.content ? <Text style={styles.entryText}>{entry.content}</Text> : null}
 
             {entry.gratitude ? (
-              <Text style={styles.gratitudeText}>Grateful for: {entry.gratitude}</Text>
+              <Text style={styles.gratitudeText}>Appreciated: {entry.gratitude}</Text>
             ) : null}
 
             {entry.thoughtPattern ? (
@@ -255,7 +272,7 @@ export default function JournalScreen() {
                 <Text style={styles.savedMetaText}>Impact: {entry.thoughtImpact}</Text>
 
                 {entry.honestReframe ? (
-                  <Text style={styles.savedMetaText}>Reframe: {entry.honestReframe}</Text>
+                  <Text style={styles.savedMetaText}>Honest version: {entry.honestReframe}</Text>
                 ) : null}
 
                 {entry.mindLesson ? (
